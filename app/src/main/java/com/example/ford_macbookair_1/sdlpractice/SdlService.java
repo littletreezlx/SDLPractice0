@@ -1,6 +1,7 @@
 package com.example.ford_macbookair_1.sdlpractice;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
@@ -8,6 +9,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
 
+import com.example.ford_macbookair_1.myapplication.R;
 import com.smartdevicelink.exception.SdlException;
 import com.smartdevicelink.proxy.SdlProxyALM;
 import com.smartdevicelink.proxy.callbacks.OnServiceEnded;
@@ -98,18 +100,19 @@ public class SdlService extends Service implements IProxyListenerALM {
     @Override
     public void onCreate() {
         super.onCreate();
-//        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-//            notificationManager.createNotificationChannel(...);
-//            Notification serviceNotification = new Notification.Builder(this, *Notification Channel*)
-//            .setContentTitle(...)
-//            .setSmallIcon(....)
-//            .setLargeIcon(...)
-//            .setContentText(...)
-//            .setChannelId(channel.getId())
-//                    .build();
-//            startForeground(id, serviceNotification);
-//        }
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            NotificationChannel channel = new NotificationChannel("id0","channel0", NotificationManager.IMPORTANCE_HIGH);
+            notificationManager.createNotificationChannel(channel);
+            Notification serviceNotification = new Notification.Builder(this,"id0")
+            .setContentTitle("TestTitle")
+            .setSmallIcon(R.mipmap.ic_launcher)
+//            .setLargeIcon(R.mipmap.ic_launcher_round)
+            .setContentText("TestText")
+            .setChannelId(channel.getId())
+                    .build();
+            startForeground(0, serviceNotification);
+        }
     }
 
     @Override
@@ -135,13 +138,13 @@ public class SdlService extends Service implements IProxyListenerALM {
     @Override
     public void onDestroy() {
         super.onDestroy();
-//        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O){
-//            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-//            if(notificationManager!=null){ //If this is the only notification on your channel
-//                notificationManager.deleteNotificationChannel(* Notification Channel*);
-//            }
-//            stopForeground(true);
-//        }
+        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O){
+            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if(notificationManager!=null){ //If this is the only notification on your channel
+                notificationManager.deleteNotificationChannel("id0");
+            }
+            stopForeground(true);
+        }
 
         if (proxy != null) {
             try {
@@ -153,6 +156,8 @@ public class SdlService extends Service implements IProxyListenerALM {
             }
         }
     }
+
+
 
 
 
