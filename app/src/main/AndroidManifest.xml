@@ -2,6 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.ford_macbookair_1.myapplication">
 
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <uses-feature android:name="android.hardware.usb.accessory"/>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -16,6 +22,42 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name="com.example.ford_macbookair_1.sdlpractice.SdlService"
+            android:enabled="true"
+            android:exported="true" />
+        <service
+            android:name="com.example.ford_macbookair_1.sdlpractice.SdlRouterService"
+            android:enabled="true"
+            android:exported="true"
+            android:process="com.example.rounter"></service>
+
+        <intent-filter>
+            <action android:name="com.smartdevicelink.router.service" />
+
+            <meta-data
+                android:name="@string/sdl_router_service_version_name"
+                android:value="@integer/sdl_router_service_version_value" />
+            <!-- <meta-data android:name="@string/sdl_router_service_is_custom_name" android:value="true" /> -->
+        </intent-filter>
+
+        <receiver
+            android:name="com.example.ford_macbookair_1.sdlpractice.SdlReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED"/>
+                <action android:name="android.bluetooth.adapter.action.STATE_CHANGED"/>
+                <action android:name="android.media.AUDIO_BECOMING_NOISY" />
+                <action android:name="sdl.router.startservice" />
+            </intent-filter>
+        </receiver>
+
+
+
+
     </application>
 
 </manifest>
