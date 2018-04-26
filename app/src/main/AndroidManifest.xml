@@ -6,15 +6,17 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <uses-feature android:name="android.hardware.usb.accessory"/>
+    <uses-feature android:name="android.hardware.usb.accessory" />
 
     <application
+        android:name="com.example.ford_macbookair_1.sdlpractice.SdlApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
         <activity android:name="com.example.ford_macbookair_1.sdlpractice.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -31,7 +33,7 @@
             android:name="com.example.ford_macbookair_1.sdlpractice.SdlRouterService"
             android:enabled="true"
             android:exported="true"
-            android:process="com.example.rounter"></service>
+            android:process="com.smartdevicelink.rounter" />
 
         <intent-filter>
             <action android:name="com.smartdevicelink.router.service" />
@@ -48,16 +50,19 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
-                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED"/>
-                <action android:name="android.bluetooth.adapter.action.STATE_CHANGED"/>
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+                <action android:name="android.bluetooth.adapter.action.STATE_CHANGED" />
                 <action android:name="android.media.AUDIO_BECOMING_NOISY" />
                 <action android:name="sdl.router.startservice" />
             </intent-filter>
         </receiver>
 
-
-
-
+        <activity
+            android:name="com.example.ford_macbookair_1.sdlpractice.LockScreenActivity"
+            android:launchMode="singleInstance"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            >
+        </activity>
     </application>
 
 </manifest>
