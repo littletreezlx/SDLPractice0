@@ -9,8 +9,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.ImageView;
 
-import com.example.ford_macbookair_1.myapplication.R;
-
 public class LockScreenActivity extends AppCompatActivity {
 
     public static final String LOCKSCREEN_BITMAP_EXTRA = "LOCKSCREEN_BITMAP_EXTRA";
