@@ -8,12 +8,17 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Build;
+
+import android.os.Environment;
 import android.os.IBinder;
+import android.provider.ContactsContract;
+import android.provider.Settings;
 import android.util.Log;
 
-import com.example.ford_macbookair_1.myapplication.R;
+
 import com.smartdevicelink.exception.SdlException;
 import com.smartdevicelink.proxy.LockScreenManager;
+import com.smartdevicelink.proxy.RPCRequest;
 import com.smartdevicelink.proxy.RPCResponse;
 import com.smartdevicelink.proxy.SdlProxyALM;
 import com.smartdevicelink.proxy.TTSChunkFactory;
@@ -100,6 +105,7 @@ import com.smartdevicelink.proxy.rpc.SubscribeButtonResponse;
 import com.smartdevicelink.proxy.rpc.SubscribeVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.SubscribeWayPointsResponse;
 import com.smartdevicelink.proxy.rpc.SystemRequestResponse;
+import com.smartdevicelink.proxy.rpc.Turn;
 import com.smartdevicelink.proxy.rpc.UnsubscribeButtonResponse;
 import com.smartdevicelink.proxy.rpc.UnsubscribeVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.UnsubscribeWayPointsResponse;
@@ -115,12 +121,18 @@ import com.smartdevicelink.proxy.rpc.enums.Result;
 import com.smartdevicelink.proxy.rpc.enums.SdlDisconnectedReason;
 import com.smartdevicelink.proxy.rpc.enums.SoftButtonType;
 import com.smartdevicelink.proxy.rpc.listeners.OnRPCResponseListener;
+import com.smartdevicelink.transport.SdlBroadcastReceiver;
 import com.smartdevicelink.transport.TransportConstants;
 import com.smartdevicelink.util.CorrelationIdGenerator;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.annotation.ElementType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -130,7 +142,13 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     private static String TAG="SdlService";
 
-    public int autoIncCorrId = 0;
+//    public int autoIncCorrId = 0;
+
+    private int nowPictureId = 0;
+
+    private int menuItemId = 0;
+
+    private List<PutFileInfo> putFileInfos=new ArrayList();
 
     private SdlProxyALM proxy=null;
 
@@ -169,7 +187,7 @@ public class SdlService extends Service implements IProxyListenerALM {
         boolean forceConnect = intent !=null && intent.getBooleanExtra(TransportConstants.FORCE_TRANSPORT_CONNECTED, false);
         if (proxy == null) {
             try {
-                proxy = new SdlProxyALM(this.getBaseContext(),this, "Hello SDL App", true, "8675309");
+                proxy = new SdlProxyALM(this.getBaseContext(),this, "First SDL!!!", true, "8675309");
             } catch (SdlException e) {
                 if (proxy == null) {
                     stopSelf();
@@ -207,6 +225,15 @@ public class SdlService extends Service implements IProxyListenerALM {
     }
 
 
+    private void sendRpcRequest(RPCRequest request){
+        request.setCorrelationID(CorrelationIdGenerator.generateId());
+        try {
+            proxy.sendRPCRequest(request);
+        } catch (SdlException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     @Override
     public void onOnHMIStatus(OnHMIStatus onHMIStatus) {
@@ -214,11 +241,26 @@ public class SdlService extends Service implements IProxyListenerALM {
             case HMI_FULL:
                 //send welcome message, addcommands, subscribe to buttons ect
                 setDisplayLayout();
-                sendTextShowRPC();
-                sendAddCommandRequest();
+                setButton();
+//                sendTextShowRPC();
 
+                initFileFromDCIM();
+                if (nowPictureId == 0){
+                    putFile(0);
+                }
 
+                sendChoiceSetRequest();
 
+//                for (int i=0; i<4; i++){
+//                    putFile(i);
+//                }
+                //测试用，检查5个
+                checkIsFileUploaded(putFileInfos.subList(0,4));
+
+                //遍历所有图片的缩略图，发到menu
+//                for (int i=0; i<putFileInfos.size(); i++){
+//                    addCommand(putFileInfos.get(i).getFileName());
+//                }
 
                 break;
             case HMI_LIMITED:
@@ -272,26 +314,21 @@ public class SdlService extends Service implements IProxyListenerALM {
     }
 
 
-    public void setDisplayLayout(){
+    public void setDisplayLayout() {
         SetDisplayLayout setDisplayLayoutRequest = new SetDisplayLayout();
         setDisplayLayoutRequest.setDisplayLayout("LARGE_GRAPHIC_WITH_SOFTBUTTONS");
         setDisplayLayoutRequest.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
-                if(((SetDisplayLayoutResponse) response).getSuccess()){
+                if (((SetDisplayLayoutResponse) response).getSuccess()) {
                     Log.i("SdlService", "Display layout set successfully.");
                     // Proceed with more user interface RPCs
-                }else{
+                } else {
                     Log.i("SdlService", "Display layout request rejected.");
                 }
             }
         });
-
-        try{
-            proxy.sendRPCRequest(setDisplayLayoutRequest);
-        }catch (SdlException e){
-            e.printStackTrace();
-        }
+        sendRpcRequest(setDisplayLayoutRequest);
     }
 
 
@@ -312,11 +349,7 @@ public class SdlService extends Service implements IProxyListenerALM {
                 }
             }
         });
-        try {
-            proxy.sendRPCRequest(show);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+        sendRpcRequest(show);
 
     }
 
@@ -348,14 +381,60 @@ public class SdlService extends Service implements IProxyListenerALM {
         }
 
 
+        public void initFileFromDCIM(){
+//            File sdFile = getApplicationContext().getExternalCacheDir();
+//            String s = Environment.getExternalStorageState();
+            File dcimFile = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
+//            String path=dcimFile.getPath();
+//            File file=new File(path);
+            File files[] = dcimFile.listFiles();
+            if(files != null)
+                for(File f:files){
+                    PutFileInfo putFileInfo = new PutFileInfo();
+                    putFileInfo.setFilePath(f.getPath());
+                    putFileInfo.setFileName(f.getName());
+                    putFileInfos.add(putFileInfo);
+                }
+        }
 
-    public void putFileRequest(){
-        PutFile putFileRequest = new PutFile();
-        putFileRequest.setSdlFileName("appIcon.jpeg");
+    public byte[] readFileDate(int id){
+        File file=new File(putFileInfos.get(id).getFilePath());
+
+        FileInputStream in = null;
+        byte[] data = null;
+        try {
+            in = new FileInputStream(file);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            byte[] buffer = new byte[1024];
+            int len = 0;
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            while( (len = in.read(buffer))!= -1){
+                out.write(buffer, 0, len);
+            }
+            data = out.toByteArray();
+            out.close();
+            in.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return data;
+    }
+
+
+
+    public void putFile(final int id){
+        final PutFile putFileRequest = new PutFile();
+        putFileRequest.setSdlFileName(putFileInfos.get(id).getFileName());
         putFileRequest.setFileType(FileType.GRAPHIC_JPEG);
         putFileRequest.setPersistentFile(true);
 
-        putFileRequest.setFileData(contentsOfResource(R.drawable.ic_launcher_background));
+        putFileRequest.setFileData(readFileDate(id));
+//        putFileRequest.setFileData(contentsOfResource(R.drawable.ic_launcher_background));
         putFileRequest.setCorrelationID(CorrelationIdGenerator.generateId());
 
         //持久化
@@ -368,30 +447,36 @@ public class SdlService extends Service implements IProxyListenerALM {
                 setListenerType(UPDATE_LISTENER_TYPE_PUT_FILE); // necessary for PutFile requests
 
                 if(response.getSuccess()){
-                    try {
-                        proxy.setappicon("appIcon.jpeg", CorrelationIdGenerator.generateId());
-                    } catch (SdlException e) {
-                        e.printStackTrace();
+                    PutFileInfo putFileInfo=putFileInfos.get(id);
+                    putFileInfo.setReady(true);
+                    addCommand(putFileInfo.getFileName());
+
+                    if (id == 0 ){
+                        showGraphic(putFileInfos.get(0).getFileName());
                     }
+
+//                    sendInteractionRequest();
+
+//                    try {
+//                        proxy.setappicon("appIcon.jpeg", CorrelationIdGenerator.generateId());
+//                    } catch (SdlException e) {
+//                        e.printStackTrace();
+//                    }
                 }else{
                     Log.i("SdlService", "Unsuccessful app icon upload.");
                 }
             }
         });
-        try {
-            proxy.sendRPCRequest(putFileRequest);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+        sendRpcRequest(putFileRequest);
     }
 
 
 
     //发送图片，先用PutFileRPC,再用ShowRPC。注：有的汽车终端不支持图片
-    public void sendGraphicShowRPC(){
+    public void showGraphic(String fileName){
         Image image = new Image();
         image.setImageType(ImageType.DYNAMIC);
-        image.setValue("appImage.jpeg"); // a previously uploaded filename using PutFile RPC
+        image.setValue(fileName); // a previously uploaded filename using PutFile RPC
 
         Show show = new Show();
         show.setGraphic(image);
@@ -406,16 +491,12 @@ public class SdlService extends Service implements IProxyListenerALM {
                 }
             }
         });
-        try {
-            proxy.sendRPCRequest(show);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+        sendRpcRequest(show);
     }
 
 
     //Check if a File Has Already Been Uploaded
-    public void checkIsFileRepeated(){
+    public void checkIsFileUploaded(final List<PutFileInfo> putFileInfos){
         ListFiles listFiles = new ListFiles();
         listFiles.setCorrelationID(CorrelationIdGenerator.generateId());
         listFiles.setOnRPCResponseListener(new OnRPCResponseListener() {
@@ -423,21 +504,21 @@ public class SdlService extends Service implements IProxyListenerALM {
             public void onResponse(int correlationId, RPCResponse response) {
                 if(response.getSuccess()){
                     List<String> filenames = ((ListFilesResponse) response).getFilenames();
-                    if(filenames.contains("appIcon.jpeg")){
-                        Log.i("SdlService", "App icon is already uploaded.");
-                    }else{
-                        Log.i("SdlService", "App icon has not been uploaded.");
+                    for (PutFileInfo putFileInfo : putFileInfos) {
+                        if (filenames.contains(putFileInfo)) {
+                            int id = putFileInfo.getId();
+                            putFile(id);
+                        } else {
+                            Log.i("SdlService", "App icon has not been uploaded.");
+                        }
                     }
                 }else{
                     Log.i("SdlService", "Failed to request list of uploaded files.");
                 }
             }
         });
-        try{
-            proxy.sendRPCRequest(listFiles);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+
+        sendRpcRequest(listFiles);
     }
 
 
@@ -487,25 +568,29 @@ public class SdlService extends Service implements IProxyListenerALM {
     }
 
 
-    public void setImageButton(){
-        Image cancelImage = new Image();
-        cancelImage.setImageType(ImageType.DYNAMIC);
-        cancelImage.setValue("cancel.jpeg");
+    public void setButton(){
+//        Image cancelImage = new Image();
+//        cancelImage.setImageType(ImageType.DYNAMIC);
+//        cancelImage.setValue("cancel.jpeg");
 
         List<SoftButton> softButtons = new ArrayList<>();
 
-        SoftButton yesButton = new SoftButton();
-        yesButton.setType(SoftButtonType.SBT_TEXT);
-        yesButton.setText("Yes");
-        yesButton.setSoftButtonID(0);
+        SoftButton lastPageBtn = new SoftButton();
+        lastPageBtn.setType(SoftButtonType.SBT_TEXT);
+        lastPageBtn.setText("Last Page");
+        lastPageBtn.setSoftButtonID(1);
+//        lastPageBtn.setIsHighlighted(true);
 
-        SoftButton cancelButton = new SoftButton();
-        cancelButton.setType(SoftButtonType.SBT_IMAGE);
-        cancelButton.setImage(cancelImage);
-        cancelButton.setSoftButtonID(1);
 
-        softButtons.add(yesButton);
-        softButtons.add(cancelButton);
+        SoftButton nextPageBtn = new SoftButton();
+//        cancelButton.setType(SoftButtonType.SBT_IMAGE);
+//        cancelButton.setImage(cancelImage);
+        nextPageBtn.setType(SoftButtonType.SBT_TEXT);
+        nextPageBtn.setText("Next Page");
+        nextPageBtn.setSoftButtonID(2);
+
+        softButtons.add(lastPageBtn);
+        softButtons.add(nextPageBtn);
 
         Show show = new Show();
         show.setSoftButtons(softButtons);
@@ -514,16 +599,15 @@ public class SdlService extends Service implements IProxyListenerALM {
             public void onResponse(int correlationId, RPCResponse response) {
                 if (((ShowResponse) response).getSuccess()) {
                     Log.i("SdlService", "Successfully showed.");
+                    Log.d(TAG, response.getInfo());
                 } else {
                     Log.i("SdlService", "Show request was rejected.");
+                    Log.d(TAG, response.getInfo());
+
                 }
             }
         });
-        try {
-            proxy.sendRPCRequest(show);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+        sendRpcRequest(show);
 
     }
 
@@ -532,20 +616,14 @@ public class SdlService extends Service implements IProxyListenerALM {
     public void sendSubscribeButtonRPC(){
         SubscribeButton subscribeButtonRequest = new SubscribeButton();
         subscribeButtonRequest.setButtonName(ButtonName.SEEKRIGHT);
-        try {
-            proxy.sendRPCRequest(subscribeButtonRequest);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+
+        sendRpcRequest(subscribeButtonRequest);
     }
 
     @Override
     public void onOnButtonEvent(OnButtonEvent notification) {
         switch(notification.getButtonName()){
             case CUSTOM_BUTTON:
-                //Custom buttons are the soft buttons previously added.
-                int ID = notification.getCustomButtonID();
-                Log.d("SdlService", "Button event received for button " + ID);
                 break;
             case OK:
                 break;
@@ -568,7 +646,33 @@ public class SdlService extends Service implements IProxyListenerALM {
             case CUSTOM_BUTTON:
                 //Custom buttons are the soft buttons previously added.
                 int ID = notification.getCustomButtonName();
-                Log.d("SdlService", "Button press received for button " + ID);
+                Log.d("SdlService", "Button event received for button " + ID);
+                switch (ID) {
+                    case 1:
+                        if (nowPictureId == 0) {
+                            // 显示到顶
+
+                        } else {
+                            nowPictureId--;
+                            PutFileInfo putFileInfo = putFileInfos.get(nowPictureId);
+                            if (putFileInfo.isReady) {
+                                showGraphic(putFileInfo.getFileName());
+                            }
+                        }
+                        break;
+                    case 2:
+                        if (nowPictureId == putFileInfos.size() - 1) {
+                            // 显示到底
+                        } else {
+                            nowPictureId++;
+                            PutFileInfo putFileInfo = putFileInfos.get(nowPictureId);
+                            if (putFileInfo.isReady) {
+                                showGraphic(putFileInfo.getFileName());
+                            }
+                        }
+                        break;
+                        default:break;
+                }
                 break;
             case OK:
                 break;
@@ -585,21 +689,23 @@ public class SdlService extends Service implements IProxyListenerALM {
         }
     }
 
-    public void sendAddCommandRequest(){
+    public void addCommand(String fileName){
+
         MenuParams menuParams = new MenuParams();
         menuParams.setParentID(0);
-        menuParams.setPosition(0);
-        menuParams.setMenuName("aaaaaaaaaaaaaa");
+        menuParams.setPosition(menuItemId++);
+        menuParams.setMenuName(fileName);
+
+        Image image = new Image();
+        image.setImageType(ImageType.DYNAMIC);
+        image.setValue(fileName);
 
         AddCommand addCommand = new AddCommand();
-        addCommand.setCmdID(autoIncCorrId++);
+        addCommand.setCmdID(CorrelationIdGenerator.generateId());
         addCommand.setMenuParams(menuParams);
+        addCommand.setCmdIcon(image);
 
-        try {
-            proxy.sendRPCRequest(addCommand);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+        sendRpcRequest(addCommand);
     }
 
     public void sendDeleteCommandRequest(){
@@ -617,7 +723,7 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     //先收到SubMenu的Resqonse才能再addItem
     public void addSubMenuRequest(){
-        int unique_id = autoIncCorrId++;
+        int unique_id = CorrelationIdGenerator.generateId();
         AddSubMenu addSubMenu = new AddSubMenu();
         addSubMenu.setPosition(0);
         addSubMenu.setMenuID(unique_id);
@@ -642,11 +748,11 @@ public class SdlService extends Service implements IProxyListenerALM {
 
 
 
-    public void sentChoiceSetRequest(){
+    public void sendChoiceSetRequest(){
         CreateInteractionChoiceSet choiceSet = new CreateInteractionChoiceSet();
 
         Choice choice = new Choice();
-        int uniqueChoiceID=autoIncCorrId++;
+        int uniqueChoiceID=CorrelationIdGenerator.generateId();
         choice.setChoiceID(uniqueChoiceID);
         choice.setMenuName("ChoiceA");
         choice.setVrCommands(Arrays.asList("ChoiceA"));
@@ -655,13 +761,14 @@ public class SdlService extends Service implements IProxyListenerALM {
         choiceList.add(choice);
 
         choiceSet.setChoiceSet(choiceList);
-        int uniqueIntChoiceSetID = autoIncCorrId++;
+        int uniqueIntChoiceSetID = CorrelationIdGenerator.generateId();
         choiceSet.setInteractionChoiceSetID(uniqueIntChoiceSetID);
         choiceSet.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
                 if(((CreateInteractionChoiceSetResponse) response).getSuccess()){
                     // The request was successful, now send the SDLPerformInteraction RPC
+                    sendInteractionRequest();
                 }else{
                     // The request was unsuccessful
                 }
@@ -678,7 +785,7 @@ public class SdlService extends Service implements IProxyListenerALM {
     //在menu item发送后，再发送interaction RPC使item显示出来
     public void sendInteractionRequest(){
         List<Integer> interactionChoiceSetIDList = new ArrayList<>();
-        int uniqueIntChoiceSetID=autoIncCorrId++;
+        int uniqueIntChoiceSetID=CorrelationIdGenerator.generateId();
         interactionChoiceSetIDList.add(uniqueIntChoiceSetID);
 
         PerformInteraction performInteraction = new PerformInteraction();
@@ -709,11 +816,7 @@ public class SdlService extends Service implements IProxyListenerALM {
             }
         });
 
-        try {
-            proxy.sendRPCRequest(performInteraction);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+        sendRpcRequest(performInteraction);
     }
 
     //删除交互选择的item
