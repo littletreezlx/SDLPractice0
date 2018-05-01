@@ -25,6 +25,14 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="com.example.ford_macbookair_1.sdlpractice.LockScreenActivity"
+            android:launchMode="singleInstance"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            >
+        </activity>
+
+
         <service
             android:name="com.example.ford_macbookair_1.sdlpractice.SdlService"
             android:enabled="true"
@@ -57,12 +65,6 @@
             </intent-filter>
         </receiver>
 
-        <activity
-            android:name="com.example.ford_macbookair_1.sdlpractice.LockScreenActivity"
-            android:launchMode="singleInstance"
-            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
-            >
-        </activity>
     </application>
 
 </manifest>

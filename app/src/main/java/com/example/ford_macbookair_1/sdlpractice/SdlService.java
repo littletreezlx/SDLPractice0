@@ -247,7 +247,8 @@ public class SdlService extends Service implements IProxyListenerALM {
         }
     }
 
-    //接收head-unit请求
+    //接收head-unit请求下载lockScreenIcon
+    @Override
     public void onOnSystemRequest(OnSystemRequest notification) {
         if(notification.getRequestType().equals(RequestType.LOCK_SCREEN_ICON_URL)){
             if(notification.getUrl() != null && lockScreenManager.getLockScreenIcon() == null){
