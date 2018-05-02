@@ -9,6 +9,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.ImageView;
 
+import com.example.ford_macbookair_1.myapplication.R;
+
 public class LockScreenActivity extends AppCompatActivity {
 
     public static final String LOCKSCREEN_BITMAP_EXTRA = "LOCKSCREEN_BITMAP_EXTRA";
@@ -30,7 +32,7 @@ public class LockScreenActivity extends AppCompatActivity {
         setContentView(R.layout.activity_lock_screen);
 
         Intent intent = getIntent();
-        ImageView imageView = (ImageView) findViewById(R.id.lock_iv);
+        ImageView imageView = findViewById(R.id.lock_iv);
 
         if (intent.hasExtra(LOCKSCREEN_BITMAP_EXTRA)) {
             Bitmap lockscreen = (Bitmap) intent.getParcelableExtra(LOCKSCREEN_BITMAP_EXTRA);

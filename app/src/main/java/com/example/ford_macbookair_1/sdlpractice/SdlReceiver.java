@@ -7,12 +7,26 @@ import android.os.Build;
 
 import com.smartdevicelink.transport.SdlBroadcastReceiver;
 import com.smartdevicelink.transport.SdlRouterService;
+import com.smartdevicelink.transport.TransportConstants;
 
 public class SdlReceiver extends SdlBroadcastReceiver {
+
+    public static final String RECONNECT_LANG_CHANGE = "RECONNECT_LANG_CHANGE";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context,intent);
+
+        if (intent != null) {
+            String action = intent.getAction();
+            if (action != null){
+                if(action.equalsIgnoreCase(TransportConstants.START_ROUTER_SERVICE_ACTION)) {
+                    if (intent.getBooleanExtra(RECONNECT_LANG_CHANGE, false)) {
+                        onSdlEnabled(context, intent);
+                    }
+                }
+            }
+        }
     }
 
     @Override

@@ -11,20 +11,19 @@ import android.os.Build;
 
 import android.os.Environment;
 import android.os.IBinder;
-import android.provider.ContactsContract;
-import android.provider.Settings;
 import android.util.Log;
-
-
+import com.example.ford_macbookair_1.myapplication.R;
 import com.smartdevicelink.exception.SdlException;
 import com.smartdevicelink.proxy.LockScreenManager;
 import com.smartdevicelink.proxy.RPCRequest;
 import com.smartdevicelink.proxy.RPCResponse;
 import com.smartdevicelink.proxy.SdlProxyALM;
+import com.smartdevicelink.proxy.SystemCapabilityManager;
 import com.smartdevicelink.proxy.TTSChunkFactory;
 import com.smartdevicelink.proxy.callbacks.OnServiceEnded;
 import com.smartdevicelink.proxy.callbacks.OnServiceNACKed;
 import com.smartdevicelink.proxy.interfaces.IProxyListenerALM;
+import com.smartdevicelink.proxy.interfaces.OnSystemCapabilityListener;
 import com.smartdevicelink.proxy.rpc.AddCommand;
 import com.smartdevicelink.proxy.rpc.AddCommandResponse;
 import com.smartdevicelink.proxy.rpc.AddSubMenu;
@@ -32,6 +31,7 @@ import com.smartdevicelink.proxy.rpc.AddSubMenuResponse;
 import com.smartdevicelink.proxy.rpc.Alert;
 import com.smartdevicelink.proxy.rpc.AlertManeuverResponse;
 import com.smartdevicelink.proxy.rpc.AlertResponse;
+import com.smartdevicelink.proxy.rpc.ButtonCapabilities;
 import com.smartdevicelink.proxy.rpc.ButtonPressResponse;
 import com.smartdevicelink.proxy.rpc.ChangeRegistrationResponse;
 import com.smartdevicelink.proxy.rpc.Choice;
@@ -46,19 +46,24 @@ import com.smartdevicelink.proxy.rpc.DeleteInteractionChoiceSetResponse;
 import com.smartdevicelink.proxy.rpc.DeleteSubMenu;
 import com.smartdevicelink.proxy.rpc.DeleteSubMenuResponse;
 import com.smartdevicelink.proxy.rpc.DiagnosticMessageResponse;
+import com.smartdevicelink.proxy.rpc.DialNumber;
 import com.smartdevicelink.proxy.rpc.DialNumberResponse;
 import com.smartdevicelink.proxy.rpc.DisplayCapabilities;
+import com.smartdevicelink.proxy.rpc.EndAudioPassThru;
 import com.smartdevicelink.proxy.rpc.EndAudioPassThruResponse;
 import com.smartdevicelink.proxy.rpc.GenericResponse;
 import com.smartdevicelink.proxy.rpc.GetDTCsResponse;
 import com.smartdevicelink.proxy.rpc.GetInteriorVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.GetSystemCapabilityResponse;
+import com.smartdevicelink.proxy.rpc.GetVehicleData;
 import com.smartdevicelink.proxy.rpc.GetVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.GetWayPointsResponse;
 import com.smartdevicelink.proxy.rpc.Image;
 import com.smartdevicelink.proxy.rpc.ListFiles;
 import com.smartdevicelink.proxy.rpc.ListFilesResponse;
 import com.smartdevicelink.proxy.rpc.MenuParams;
+import com.smartdevicelink.proxy.rpc.NavigationCapability;
+import com.smartdevicelink.proxy.rpc.OasisAddress;
 import com.smartdevicelink.proxy.rpc.OnAudioPassThru;
 import com.smartdevicelink.proxy.rpc.OnButtonEvent;
 import com.smartdevicelink.proxy.rpc.OnButtonPress;
@@ -77,6 +82,7 @@ import com.smartdevicelink.proxy.rpc.OnTBTClientState;
 import com.smartdevicelink.proxy.rpc.OnTouchEvent;
 import com.smartdevicelink.proxy.rpc.OnVehicleData;
 import com.smartdevicelink.proxy.rpc.OnWayPointChange;
+import com.smartdevicelink.proxy.rpc.PerformAudioPassThru;
 import com.smartdevicelink.proxy.rpc.PerformAudioPassThruResponse;
 import com.smartdevicelink.proxy.rpc.PerformInteraction;
 import com.smartdevicelink.proxy.rpc.PerformInteractionResponse;
@@ -86,6 +92,7 @@ import com.smartdevicelink.proxy.rpc.ReadDIDResponse;
 import com.smartdevicelink.proxy.rpc.ResetGlobalPropertiesResponse;
 import com.smartdevicelink.proxy.rpc.ScrollableMessageResponse;
 import com.smartdevicelink.proxy.rpc.SendHapticDataResponse;
+import com.smartdevicelink.proxy.rpc.SendLocation;
 import com.smartdevicelink.proxy.rpc.SendLocationResponse;
 import com.smartdevicelink.proxy.rpc.SetAppIconResponse;
 import com.smartdevicelink.proxy.rpc.SetDisplayLayout;
@@ -102,24 +109,33 @@ import com.smartdevicelink.proxy.rpc.SpeakResponse;
 import com.smartdevicelink.proxy.rpc.StreamRPCResponse;
 import com.smartdevicelink.proxy.rpc.SubscribeButton;
 import com.smartdevicelink.proxy.rpc.SubscribeButtonResponse;
+import com.smartdevicelink.proxy.rpc.SubscribeVehicleData;
 import com.smartdevicelink.proxy.rpc.SubscribeVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.SubscribeWayPointsResponse;
 import com.smartdevicelink.proxy.rpc.SystemRequestResponse;
 import com.smartdevicelink.proxy.rpc.Turn;
 import com.smartdevicelink.proxy.rpc.UnsubscribeButtonResponse;
+import com.smartdevicelink.proxy.rpc.UnsubscribeVehicleData;
 import com.smartdevicelink.proxy.rpc.UnsubscribeVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.UnsubscribeWayPointsResponse;
 import com.smartdevicelink.proxy.rpc.UpdateTurnListResponse;
+import com.smartdevicelink.proxy.rpc.enums.AudioStreamingState;
+import com.smartdevicelink.proxy.rpc.enums.AudioType;
+import com.smartdevicelink.proxy.rpc.enums.BitsPerSample;
 import com.smartdevicelink.proxy.rpc.enums.ButtonName;
 import com.smartdevicelink.proxy.rpc.enums.FileType;
 import com.smartdevicelink.proxy.rpc.enums.HMILevel;
 import com.smartdevicelink.proxy.rpc.enums.ImageType;
 import com.smartdevicelink.proxy.rpc.enums.LayoutMode;
 import com.smartdevicelink.proxy.rpc.enums.LockScreenStatus;
+import com.smartdevicelink.proxy.rpc.enums.PRNDL;
 import com.smartdevicelink.proxy.rpc.enums.RequestType;
 import com.smartdevicelink.proxy.rpc.enums.Result;
+import com.smartdevicelink.proxy.rpc.enums.SamplingRate;
 import com.smartdevicelink.proxy.rpc.enums.SdlDisconnectedReason;
 import com.smartdevicelink.proxy.rpc.enums.SoftButtonType;
+import com.smartdevicelink.proxy.rpc.enums.SystemCapabilityType;
+import com.smartdevicelink.proxy.rpc.enums.SystemContext;
 import com.smartdevicelink.proxy.rpc.listeners.OnRPCResponseListener;
 import com.smartdevicelink.transport.SdlBroadcastReceiver;
 import com.smartdevicelink.transport.TransportConstants;
@@ -236,10 +252,12 @@ public class SdlService extends Service implements IProxyListenerALM {
 
 
     @Override
-    public void onOnHMIStatus(OnHMIStatus onHMIStatus) {
-        switch(onHMIStatus.getHmiLevel()) {
+    public void onOnHMIStatus(OnHMIStatus notification) {
+        //细分HMI状态
+//        AudioStreamingState streamingState = notification.getAudioStreamingState();
+//        SystemContext systemContext = notification.getSystemContext();
+        switch(notification.getHmiLevel()) {
             case HMI_FULL:
-                //send welcome message, addcommands, subscribe to buttons ect
                 setDisplayLayout();
                 setButton();
 //                sendTextShowRPC();
@@ -250,7 +268,6 @@ public class SdlService extends Service implements IProxyListenerALM {
                 }
 
                 sendChoiceSetRequest();
-
 //                for (int i=0; i<4; i++){
 //                    putFile(i);
 //                }
@@ -262,15 +279,22 @@ public class SdlService extends Service implements IProxyListenerALM {
 //                    addCommand(putFileInfos.get(i).getFileName());
 //                }
 
+                Log.d(TAG, "onOnHMIStatus:HMI_FULL");
                 break;
             case HMI_LIMITED:
+
+                Log.d(TAG, "onOnHMIStatus:HMI_LIMITED");
                 break;
             case HMI_BACKGROUND:
+
+                Log.d(TAG, "onOnHMIStatus:HMI_BACKGROUND");
                 break;
             case HMI_NONE:
+
+                Log.d(TAG, "onOnHMIStatus:HMI_NONE");
                 break;
             default:
-                return;
+                break;
         }
     }
 
@@ -435,7 +459,6 @@ public class SdlService extends Service implements IProxyListenerALM {
 
         putFileRequest.setFileData(readFileDate(id));
 //        putFileRequest.setFileData(contentsOfResource(R.drawable.ic_launcher_background));
-        putFileRequest.setCorrelationID(CorrelationIdGenerator.generateId());
 
         //持久化
         putFileRequest.setPersistentFile(true);
@@ -480,7 +503,6 @@ public class SdlService extends Service implements IProxyListenerALM {
 
         Show show = new Show();
         show.setGraphic(image);
-        show.setCorrelationID(CorrelationIdGenerator.generateId());
         show.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
@@ -498,7 +520,6 @@ public class SdlService extends Service implements IProxyListenerALM {
     //Check if a File Has Already Been Uploaded
     public void checkIsFileUploaded(final List<PutFileInfo> putFileInfos){
         ListFiles listFiles = new ListFiles();
-        listFiles.setCorrelationID(CorrelationIdGenerator.generateId());
         listFiles.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
@@ -525,7 +546,6 @@ public class SdlService extends Service implements IProxyListenerALM {
     //Check the Amount of File Storage
     public void checkLeftFileStorage(){
         ListFiles listFiles = new ListFiles();
-        listFiles.setCorrelationID(CorrelationIdGenerator.generateId());
         listFiles.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
@@ -548,7 +568,6 @@ public class SdlService extends Service implements IProxyListenerALM {
     public void deleteFileWithFileName(){
         DeleteFile deleteFileRequest = new DeleteFile();
         deleteFileRequest.setSdlFileName("appIcon.jpeg");
-        deleteFileRequest.setCorrelationID(CorrelationIdGenerator.generateId());
         deleteFileRequest.setOnRPCResponseListener(new OnRPCResponseListener() {
 
             @Override
@@ -896,6 +915,11 @@ public class SdlService extends Service implements IProxyListenerALM {
     @Override
     public void onProxyClosed(String s, Exception e, SdlDisconnectedReason sdlDisconnectedReason) {
         stopSelf();
+        if(sdlDisconnectedReason.equals(SdlDisconnectedReason.LANGUAGE_CHANGE)){
+            Intent intent = new Intent(TransportConstants.START_ROUTER_SERVICE_ACTION);
+            intent.putExtra(SdlReceiver.RECONNECT_LANG_CHANGE, true);
+            sendBroadcast(intent);
+        }
     }
 
     @Override
@@ -1029,25 +1053,13 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     }
 
-    @Override
-    public void onOnVehicleData(OnVehicleData onVehicleData) {
 
-    }
-
-    @Override
-    public void onPerformAudioPassThruResponse(PerformAudioPassThruResponse performAudioPassThruResponse) {
-
-    }
 
     @Override
     public void onEndAudioPassThruResponse(EndAudioPassThruResponse endAudioPassThruResponse) {
 
     }
 
-    @Override
-    public void onOnAudioPassThru(OnAudioPassThru onAudioPassThru) {
-
-    }
 
     @Override
     public void onPutFileResponse(PutFileResponse putFileResponse) {
@@ -1220,4 +1232,238 @@ public class SdlService extends Service implements IProxyListenerALM {
     public void onSendHapticDataResponse(SendHapticDataResponse sendHapticDataResponse) {
 
     }
+
+
+    //
+    public void getVehicleData(){
+        GetVehicleData vdRequest = new GetVehicleData();
+        vdRequest.setPrndl(true);
+        vdRequest.setOnRPCResponseListener(new OnRPCResponseListener() {
+            @Override
+            public void onResponse(int correlationId, RPCResponse response) {
+                if(response.getSuccess()){
+                    PRNDL prndl = ((GetVehicleDataResponse) response).getPrndl();
+                    Log.i("SdlService", "PRNDL status: " + prndl.toString());
+                }else{
+                    Log.i("SdlService", "GetVehicleData was rejected.");
+                }
+            }
+        });
+       sendRpcRequest(vdRequest);
+    }
+
+    //订阅车辆信息，大概每秒返回一次
+    public void subscribeVehicleData() {
+        SubscribeVehicleData subscribeRequest = new SubscribeVehicleData();
+        subscribeRequest.setPrndl(true);
+        subscribeRequest.setOnRPCResponseListener(new OnRPCResponseListener() {
+            @Override
+            public void onResponse(int correlationId, RPCResponse response) {
+                if (response.getSuccess()) {
+                    Log.i("SdlService", "Successfully subscribed to vehicle data.");
+                } else {
+                    Log.i("SdlService", "Request to subscribe to vehicle data was rejected.");
+                }
+            }
+        });
+        sendRpcRequest(subscribeRequest);
+    }
+
+    @Override
+    public void onOnVehicleData(OnVehicleData notification) {
+        PRNDL prndl = notification.getPrndl();
+        Log.i("SdlService", "PRNDL status was updated to: "+prndl.toString());
+    }
+
+    //取消订阅车辆信息
+    public void unsubscribeVehicleData(){
+        UnsubscribeVehicleData unsubscribeRequest = new UnsubscribeVehicleData();
+        unsubscribeRequest.setPrndl(true); // unsubscribe to PRNDL data
+        unsubscribeRequest.setOnRPCResponseListener(new OnRPCResponseListener() {
+            @Override
+            public void onResponse(int correlationId, RPCResponse response) {
+                if(response.getSuccess()){
+                    Log.i("SdlService", "Successfully unsubscribed to vehicle data.");
+                }else{
+                    Log.i("SdlService", "Request to unsubscribe to vehicle data was rejected.");
+                }
+            }
+        });
+
+        sendRpcRequest(unsubscribeRequest);
+    }
+
+
+    //检查导航仪是否可用
+    public void checkIsNavigationAvailable(){
+        try {
+            if(proxy.getHmiCapabilities().isNavigationAvailable()){
+                // SendLocation supported
+            }else{
+                // SendLocation is not supported
+            }
+        } catch (SdlException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //标记目的地
+    public void  sendLocation(){
+        SendLocation sendLocation = new SendLocation();
+        sendLocation.setLatitudeDegrees(42.877737);
+        sendLocation.setLongitudeDegrees(-97.380967);
+        sendLocation.setLocationName("The Center");
+        sendLocation.setLocationDescription("Center of the United States");
+
+// Create Address
+        OasisAddress address = new OasisAddress();
+        address.setSubThoroughfare("900");
+        address.setThoroughfare("Whiting Dr");
+        address.setLocality("Yankton");
+        address.setAdministrativeArea("SD");
+        address.setPostalCode("57078");
+        address.setCountryCode("US-SD");
+        address.setCountryName("United States");
+
+        sendLocation.setAddress(address);
+
+// Monitor response
+        sendLocation.setOnRPCResponseListener(new OnRPCResponseListener() {
+            @Override
+            public void onResponse(int correlationId, RPCResponse response) {
+                Result result = response.getResultCode();
+                if(result.equals(Result.SUCCESS)){
+                    // SendLocation was successfully sent.
+                }else if(result.equals(Result.INVALID_DATA)){
+                    // The request you sent contains invalid data and was rejected.
+                }else if(result.equals(Result.DISALLOWED)){
+                    // Your app does not have permission to use SendLocation.
+                }
+            }
+        });
+
+        sendRpcRequest(sendLocation);
+    }
+
+
+
+    //检查打电话是否可用
+    public void checkIsPhoneCallAvailable() {
+        try {
+            if (proxy.getHmiCapabilities().isPhoneCallAvailable()) {
+                // DialNumber supported
+            } else {
+                // DialNumber is not supported
+            }
+        } catch (SdlException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void dialNumber(){
+        DialNumber dialNumber = new DialNumber();
+        dialNumber.setNumber("1238675309");
+        dialNumber.setOnRPCResponseListener(new OnRPCResponseListener() {
+            @Override
+            public void onResponse(int correlationId, RPCResponse response) {
+                Result result = response.getResultCode();
+                if(result.equals(Result.SUCCESS)){
+                    // `DialNumber` was successfully sent, and a phone call was initiated by the user.
+                }else if(result.equals(Result.REJECTED)){
+                    // `DialNumber` was sent, and a phone call was cancelled by the user. Also, this could mean that there is no phone connected via Bluetooth.
+                }else if(result.equals(Result.DISALLOWED)){
+                    // Your app does not have permission to use DialNumber.
+                }
+            }
+        });
+
+        sendRpcRequest(dialNumber);
+    }
+
+
+    //
+    public void performAudioPassThru(){
+        PerformAudioPassThru performAPT = new PerformAudioPassThru();
+        performAPT.setAudioPassThruDisplayText1("Ask me \"What's the weather?\"");
+        performAPT.setAudioPassThruDisplayText2("or \"What's 1 + 2?\"");
+
+        performAPT.setInitialPrompt(TTSChunkFactory
+                .createSimpleTTSChunks("Ask me What's the weather? or What's 1 plus 2?"));
+        performAPT.setSamplingRate(SamplingRate._22KHZ);
+        performAPT.setMaxDuration(7000);
+        performAPT.setBitsPerSample(BitsPerSample._16_BIT);
+        performAPT.setAudioType(AudioType.PCM);
+        performAPT.setMuteAudio(false);
+
+        sendRpcRequest(performAPT);
+    }
+
+    public void endAudioPassThru(){
+        EndAudioPassThru endAPT = new EndAudioPassThru();
+        sendRpcRequest(endAPT);
+    }
+
+    @Override
+    public void onOnAudioPassThru(OnAudioPassThru notification) {
+
+        byte[] dataRcvd;
+        dataRcvd = notification.getAPTData();
+
+        // Do something with audio data
+    }
+
+    @Override
+    public void onPerformAudioPassThruResponse(PerformAudioPassThruResponse response) {
+        Result result = response.getResultCode();
+        if(result.equals(Result.SUCCESS)){
+            // We can use the data
+        }else{
+            // Cancel any usage of the data
+            Log.e("SdlService", "Audio pass thru attempt failed.");
+        }
+    }
+
+
+    public void getNavigationCapabilities(){
+        // First you can check to see if the capability is supported on the module
+        if (proxy.isCapabilitySupported(SystemCapabilityType.NAVIGATION)){
+            // Since the module does support this capability we can query it for more information
+            proxy.getCapability(SystemCapabilityType.NAVIGATION, new OnSystemCapabilityListener(){
+
+                @Override
+                public void onCapabilityRetrieved(Object capability){
+                    NavigationCapability navCapability = (NavigationCapability) capability;
+                    // Now it is possible to get details on how this capability
+                    // is supported using the navCapability object
+                }
+
+                @Override
+                public void onError(String info){
+                    Log.i(TAG, "Capability could not be retrieved: "+ info);
+                }
+            });
+        }
+    }
+
+    public void getButtonCapabilities() {
+
+        proxy.getCapability(SystemCapabilityType.BUTTON, new OnSystemCapabilityListener(){
+
+            @Override
+            public void onCapabilityRetrieved(Object capability){
+                List<ButtonCapabilities> buttonCapabilityList = SystemCapabilityManager.convertToList(capability, ButtonCapabilities.class);
+
+            }
+
+            @Override
+            public void onError(String info){
+                Log.i(TAG, "Capability could not be retrieved: "+ info);
+            }
+        });
+    }
+
+
+
+
 }
