@@ -114,12 +114,14 @@ import com.smartdevicelink.proxy.rpc.enums.ButtonName;
 import com.smartdevicelink.proxy.rpc.enums.FileType;
 import com.smartdevicelink.proxy.rpc.enums.HMILevel;
 import com.smartdevicelink.proxy.rpc.enums.ImageType;
+import com.smartdevicelink.proxy.rpc.enums.InteractionMode;
 import com.smartdevicelink.proxy.rpc.enums.LayoutMode;
 import com.smartdevicelink.proxy.rpc.enums.LockScreenStatus;
 import com.smartdevicelink.proxy.rpc.enums.RequestType;
 import com.smartdevicelink.proxy.rpc.enums.Result;
 import com.smartdevicelink.proxy.rpc.enums.SdlDisconnectedReason;
 import com.smartdevicelink.proxy.rpc.enums.SoftButtonType;
+import com.smartdevicelink.proxy.rpc.enums.TriggerSource;
 import com.smartdevicelink.proxy.rpc.listeners.OnMultipleRequestListener;
 import com.smartdevicelink.proxy.rpc.listeners.OnRPCResponseListener;
 import com.smartdevicelink.transport.SdlBroadcastReceiver;
@@ -136,7 +138,9 @@ import java.io.InputStream;
 import java.lang.annotation.ElementType;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SdlService extends Service implements IProxyListenerALM {
 
@@ -145,16 +149,23 @@ public class SdlService extends Service implements IProxyListenerALM {
 
 //    public int autoIncCorrId = 0;
 
+    private boolean isFirstHMIFull = true, isChoiceAvailable = true, hasChoiceShown = false;
+
     private int nowPictureId = 0;
 
     private int menuItemId = 0;
 
+    private int lastPageCmdId=-1,nextPageCmdId=-1;
+
     private List<PutFileInfo> putFileInfos=new ArrayList();
+
+    private Map<Integer,String> cmdIdAndFileNameMap = new HashMap<>();
 
     private SdlProxyALM proxy=null;
 
     private LockScreenManager lockScreenManager = new LockScreenManager();
 
+    private int enterMenuTimes = 0;
 
 
     public SdlService() {
@@ -238,33 +249,44 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     @Override
     public void onOnHMIStatus(OnHMIStatus onHMIStatus) {
-        switch(onHMIStatus.getHmiLevel()) {
-            case HMI_FULL:
-                //send welcome message, addcommands, subscribe to buttons ect
-                setDisplayLayout();
-                setButton();
-//                sendTextShowRPC();
+        switch (onHMIStatus.getSystemContext()){
+            case SYSCTXT_MENU:
+                enterMenuTimes++;
+//                if (isChoiceAvailable){
+//                    sendChoiceSetRequest();
+//                    isChoiceAvailable = false;
+//                }
 
-                initFileFromDCIM();
-                if (nowPictureId == 0){
-                    putFile(0);
+                if (enterMenuTimes%2 == 1){
+                    sendChoiceSetRequest();
                 }
 
-                sendChoiceSetRequest();
+                break;
+                default:break;
+        }
 
-//                for (int i=0; i<4; i++){
-//                    putFile(i);
-//                }
-                //测试用，检查5个
-                checkIsFileUploaded(putFileInfos.subList(0,4));
+        switch(onHMIStatus.getHmiLevel()) {
+            case HMI_FULL:
+                if (isFirstHMIFull){
+                    setDisplayLayout();
+                    setButton();
+                    setButtonVR();
 
-                //遍历所有图片的缩略图，发到menu
-//                for (int i=0; i<putFileInfos.size(); i++){
-//                    addCommand(putFileInfos.get(i).getFileName());
-//                }
+//                    addSubMenuRequest();
+//                sendTextShowRPC();
+
+                    initFileFromDCIM();
+                    checkIsFileUploaded(putFileInfos);
+
+//                    sendChoiceSetRequest();
+                }
+
+//                sendChoiceSetRequest();
+                isFirstHMIFull =false;
 
                 break;
             case HMI_LIMITED:
+
                 break;
             case HMI_BACKGROUND:
                 break;
@@ -449,7 +471,6 @@ public class SdlService extends Service implements IProxyListenerALM {
                 if(response.getSuccess()){
                     PutFileInfo putFileInfo=putFileInfos.get(id);
                     putFileInfo.setReady(true);
-                    addCommand(putFileInfo.getFileName());
 
                     if (id == 0 ){
                         showGraphic(putFileInfos.get(0).getFileName());
@@ -469,6 +490,8 @@ public class SdlService extends Service implements IProxyListenerALM {
         });
         sendRpcRequest(putFileRequest);
     }
+
+
 
 
 
@@ -570,17 +593,22 @@ public class SdlService extends Service implements IProxyListenerALM {
             public void onResponse(int correlationId, RPCResponse response) {
                 if(response.getSuccess()){
                     List<String> filenames = ((ListFilesResponse) response).getFilenames();
-                    for (PutFileInfo putFileInfo : putFileInfos) {
-                        if (filenames.contains(putFileInfo)) {
-                            int id = putFileInfo.getId();
-                            putFile(id);
+                    for (int i =0; i<putFileInfos.size(); i++) {
+                        PutFileInfo putFileInfo = putFileInfos.get(i);
+                        if (filenames.contains(putFileInfo.getFileName())) {
+                            putFileInfo.setReady(true);
                         } else {
-                            Log.i("SdlService", "App icon has not been uploaded.");
+                            putFile(i);
                         }
                     }
                 }else{
                     Log.i("SdlService", "Failed to request list of uploaded files.");
                 }
+                if (nowPictureId == 0){
+                    showGraphic(putFileInfos.get(0).getFileName());
+                }
+//                addSubMenuRequest();
+
             }
         });
 
@@ -611,9 +639,9 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     }
 
-    public void deleteFileWithFileName(){
+    public void deleteFileWithFileName(String fileName){
         DeleteFile deleteFileRequest = new DeleteFile();
-        deleteFileRequest.setSdlFileName("appIcon.jpeg");
+        deleteFileRequest.setSdlFileName(fileName);
         deleteFileRequest.setCorrelationID(CorrelationIdGenerator.generateId());
         deleteFileRequest.setOnRPCResponseListener(new OnRPCResponseListener() {
 
@@ -626,11 +654,8 @@ public class SdlService extends Service implements IProxyListenerALM {
                 }
             }
         });
-        try{
-            proxy.sendRPCRequest(deleteFileRequest);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+
+        sendRpcRequest(deleteFileRequest);
     }
 
 
@@ -645,6 +670,7 @@ public class SdlService extends Service implements IProxyListenerALM {
         lastPageBtn.setType(SoftButtonType.SBT_TEXT);
         lastPageBtn.setText("Last Page");
         lastPageBtn.setSoftButtonID(1);
+
 //        lastPageBtn.setIsHighlighted(true);
 
 
@@ -706,6 +732,36 @@ public class SdlService extends Service implements IProxyListenerALM {
         }
     }
 
+    public void setButtonVR(){
+        AddCommand addCommand = new AddCommand();
+        lastPageCmdId = CorrelationIdGenerator.generateId();
+        addCommand.setCmdID(lastPageCmdId);
+        addCommand.setVrCommands(Arrays.asList("Last Page"));
+        sendRpcRequest(addCommand);
+        AddCommand addCommand2 = new AddCommand();
+        nextPageCmdId = CorrelationIdGenerator.generateId();
+        addCommand2.setCmdID(nextPageCmdId);
+        addCommand2.setVrCommands(Arrays.asList("Next Page"));
+        sendRpcRequest(addCommand2);
+    }
+
+    @Override
+    public void onOnCommand(OnCommand onCommand) {
+        int cmdID = onCommand.getCmdID();
+        if (cmdID == lastPageCmdId){
+            showLastPage();
+        }else if (cmdID == nextPageCmdId){
+            showLastPage();
+        }else if (cmdIdAndFileNameMap.containsKey(cmdID)){
+            showGraphic(cmdIdAndFileNameMap.get(cmdID));
+
+            for (int deleteCmdId : cmdIdAndFileNameMap.keySet()){
+                deleteMenuItem(deleteCmdId);
+            }
+        }
+
+    }
+
     @Override
     public void onOnButtonPress(OnButtonPress notification) {
         switch(notification.getButtonName()){
@@ -715,29 +771,12 @@ public class SdlService extends Service implements IProxyListenerALM {
                 Log.d("SdlService", "Button event received for button " + ID);
                 switch (ID) {
                     case 1:
-                        if (nowPictureId == 0) {
-                            // 显示到顶
-
-                        } else {
-                            nowPictureId--;
-                            PutFileInfo putFileInfo = putFileInfos.get(nowPictureId);
-                            if (putFileInfo.isReady) {
-                                showGraphic(putFileInfo.getFileName());
-                            }
-                        }
+                       showLastPage();
                         break;
                     case 2:
-                        if (nowPictureId == putFileInfos.size() - 1) {
-                            // 显示到底
-                        } else {
-                            nowPictureId++;
-                            PutFileInfo putFileInfo = putFileInfos.get(nowPictureId);
-                            if (putFileInfo.isReady) {
-                                showGraphic(putFileInfo.getFileName());
-                            }
-                        }
+                        showNextPage();
                         break;
-                        default:break;
+                    default:break;
                 }
                 break;
             case OK:
@@ -755,7 +794,34 @@ public class SdlService extends Service implements IProxyListenerALM {
         }
     }
 
-    public void addCommand(String fileName){
+    public void showLastPage(){
+
+        if (nowPictureId == 0) {
+            // 显示到顶
+
+        } else {
+            nowPictureId--;
+            PutFileInfo putFileInfo = putFileInfos.get(nowPictureId);
+            if (putFileInfo.getReady()) {
+                showGraphic(putFileInfo.getFileName());
+            }
+        }
+    }
+
+
+    public void showNextPage() {
+        if (nowPictureId == putFileInfos.size() - 1) {
+            // 显示到底
+        } else {
+            nowPictureId++;
+            PutFileInfo putFileInfo = putFileInfos.get(nowPictureId);
+            if (putFileInfo.getReady()) {
+                showGraphic(putFileInfo.getFileName());
+            }
+        }
+    }
+
+    public void setMenuItem(String fileName){
 
         MenuParams menuParams = new MenuParams();
         menuParams.setParentID(0);
@@ -767,18 +833,24 @@ public class SdlService extends Service implements IProxyListenerALM {
         image.setValue(fileName);
 
         AddCommand addCommand = new AddCommand();
-        addCommand.setCmdID(CorrelationIdGenerator.generateId());
+        int cmdId = CorrelationIdGenerator.generateId();
+        addCommand.setCmdID(cmdId);
         addCommand.setMenuParams(menuParams);
         addCommand.setCmdIcon(image);
+        addCommand.setVrCommands(Arrays.asList(fileName));
 
+        if (!cmdIdAndFileNameMap.containsValue(fileName)){
+            cmdIdAndFileNameMap.put(cmdId,fileName);
+
+        }
         sendRpcRequest(addCommand);
     }
 
-    public void sendDeleteCommandRequest(){
-        int cmdID_to_delete = 1;
+
+    public void deleteMenuItem(int cmdId){
 
         DeleteCommand deleteCommand = new DeleteCommand();
-        deleteCommand.setCmdID(cmdID_to_delete);
+        deleteCommand.setCmdID(cmdId);
 
         try {
             proxy.sendRPCRequest(deleteCommand);
@@ -789,22 +861,28 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     //先收到SubMenu的Resqonse才能再addItem
     public void addSubMenuRequest(){
-        int unique_id = CorrelationIdGenerator.generateId();
+//        int unique_id = CorrelationIdGenerator.generateId();
         AddSubMenu addSubMenu = new AddSubMenu();
         addSubMenu.setPosition(0);
-        addSubMenu.setMenuID(unique_id);
-        addSubMenu.setMenuName("SubMenu");
+        addSubMenu.setMenuID(1);
+        addSubMenu.setMenuName("list");
         addSubMenu.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
                 if(((AddSubMenuResponse) response).getSuccess()){
                     // The submenu was created successfully, start adding the submenu items
                     // Use unique_id
+
+//                    for (int i=0 ;i<putFileInfos.size(); i++){
+//                        setMenuItems(putFileInfos.get(i).getFileName());
+//                    }
                 }else{
                     Log.i("SdlService", "AddSubMenu request rejected.");
                 }
             }
         });
+
+        sendRpcRequest(addSubMenu);
     }
 
     public void deleteSubMenuRequest(int submenuID_to_delete){
@@ -817,72 +895,78 @@ public class SdlService extends Service implements IProxyListenerALM {
     public void sendChoiceSetRequest(){
         CreateInteractionChoiceSet choiceSet = new CreateInteractionChoiceSet();
 
-        Choice choice = new Choice();
-        int uniqueChoiceID=CorrelationIdGenerator.generateId();
-        choice.setChoiceID(uniqueChoiceID);
-        choice.setMenuName("ChoiceA");
-        choice.setVrCommands(Arrays.asList("ChoiceA"));
+        Choice choice0 = new Choice();
+//        int ChoiceID0=CorrelationIdGenerator.generateId();
+        choice0.setChoiceID(0);
+        choice0.setMenuName("list");
+        choice0.setVrCommands(Arrays.asList("list"));
+
+//        Choice choice1 = new Choice();
+//        int uniqueChoiceID1=CorrelationIdGenerator.generateId();
+//        choice1.setChoiceID(uniqueChoiceID1);
+//        choice1.setMenuName("ChoiceB");
+//        choice1.setVrCommands(Arrays.asList("B"));
 
         List<Choice> choiceList = new ArrayList<>();
-        choiceList.add(choice);
-
+        choiceList.add(choice0);
+//        choiceList.add(choice1);
         choiceSet.setChoiceSet(choiceList);
-        int uniqueIntChoiceSetID = CorrelationIdGenerator.generateId();
+        final int uniqueIntChoiceSetID = CorrelationIdGenerator.generateId();
         choiceSet.setInteractionChoiceSetID(uniqueIntChoiceSetID);
         choiceSet.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
-                if(((CreateInteractionChoiceSetResponse) response).getSuccess()){
+                if(response.getSuccess()){
                     // The request was successful, now send the SDLPerformInteraction RPC
-                    sendInteractionRequest();
+//                    int a=correlationId;
+//                    int b=uniqueIntChoiceSetID;
+                    sendInteractionRequest(uniqueIntChoiceSetID);
                 }else{
                     // The request was unsuccessful
                 }
             }
         });
-        try {
-            proxy.sendRPCRequest(choiceSet);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+
+        hasChoiceShown = true;
+        sendRpcRequest(choiceSet);
     }
 
 
     //在menu item发送后，再发送interaction RPC使item显示出来
-    public void sendInteractionRequest(){
+    public void sendInteractionRequest(int uniqueIntChoiceSetID){
         List<Integer> interactionChoiceSetIDList = new ArrayList<>();
-        int uniqueIntChoiceSetID=CorrelationIdGenerator.generateId();
+//        int uniqueIntChoiceSetID=CorrelationIdGenerator.generateId();
         interactionChoiceSetIDList.add(uniqueIntChoiceSetID);
 
         PerformInteraction performInteraction = new PerformInteraction();
-        performInteraction.setInitialText("Initial text.");
+        performInteraction.setInitialText("Initial");
         performInteraction.setInteractionChoiceSetIDList(interactionChoiceSetIDList);
 
         performInteraction.setInteractionLayout(LayoutMode.LIST_ONLY);
+        performInteraction.setInteractionMode(InteractionMode.BOTH);
 
-        //语音提示
-        performInteraction.setInitialPrompt(
-                TTSChunkFactory.createSimpleTTSChunks("Hello, welcome."));
-        //
-        performInteraction.setTimeout(3000);
-        performInteraction.setOnRPCResponseListener(new OnRPCResponseListener() {
-            @Override
-            public void onResponse(int correlationId, RPCResponse response) {
-                PerformInteractionResponse piResponse = (PerformInteractionResponse) response;
-                if(piResponse.getSuccess()){
-                    // Successful request
-                    if(piResponse.getResultCode().equals(Result.TIMED_OUT)){
-                        // Interaction timed out without user input
-                    }else if(piResponse.getResultCode().equals(Result.SUCCESS)){
-                        Integer userChoice = piResponse.getChoiceID();
-                    }
-                }else{
-                    // Unsuccessful request
-                }
-            }
-        });
+//        performInteraction.setInitialPrompt(
+//                TTSChunkFactory.createSimpleTTSChunks("Hello"));
+//        performInteraction.setTimeout(3000);
 
         sendRpcRequest(performInteraction);
+    }
+
+    @Override
+    public void onPerformInteractionResponse(PerformInteractionResponse piResponse) {
+        if(piResponse.getSuccess()){
+            if(piResponse.getResultCode().equals(Result.TIMED_OUT)){
+            }else if(piResponse.getResultCode().equals(Result.SUCCESS)){
+                Integer userChoice = piResponse.getChoiceID();
+//                setSubMenuItems(putFileInfos.get(0).getFileName());
+                if (userChoice.equals(0)){
+                    for (int i=0 ;i<putFileInfos.size(); i++){
+                        setMenuItem(putFileInfos.get(i).getFileName());
+                    }
+                }
+            }
+        }else{
+        }
     }
 
     //删除交互选择的item
@@ -995,11 +1079,6 @@ public class SdlService extends Service implements IProxyListenerALM {
     }
 
     @Override
-    public void onOnCommand(OnCommand onCommand) {
-
-    }
-
-    @Override
     public void onAddCommandResponse(AddCommandResponse addCommandResponse) {
 
     }
@@ -1034,10 +1113,6 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     }
 
-    @Override
-    public void onPerformInteractionResponse(PerformInteractionResponse performInteractionResponse) {
-
-    }
 
     @Override
     public void onResetGlobalPropertiesResponse(ResetGlobalPropertiesResponse resetGlobalPropertiesResponse) {
