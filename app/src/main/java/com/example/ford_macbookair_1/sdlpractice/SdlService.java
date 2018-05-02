@@ -11,19 +11,20 @@ import android.os.Build;
 
 import android.os.Environment;
 import android.os.IBinder;
+import android.provider.ContactsContract;
+import android.provider.Settings;
 import android.util.Log;
-import com.example.ford_macbookair_1.myapplication.R;
+
+
 import com.smartdevicelink.exception.SdlException;
 import com.smartdevicelink.proxy.LockScreenManager;
 import com.smartdevicelink.proxy.RPCRequest;
 import com.smartdevicelink.proxy.RPCResponse;
 import com.smartdevicelink.proxy.SdlProxyALM;
-import com.smartdevicelink.proxy.SystemCapabilityManager;
 import com.smartdevicelink.proxy.TTSChunkFactory;
 import com.smartdevicelink.proxy.callbacks.OnServiceEnded;
 import com.smartdevicelink.proxy.callbacks.OnServiceNACKed;
 import com.smartdevicelink.proxy.interfaces.IProxyListenerALM;
-import com.smartdevicelink.proxy.interfaces.OnSystemCapabilityListener;
 import com.smartdevicelink.proxy.rpc.AddCommand;
 import com.smartdevicelink.proxy.rpc.AddCommandResponse;
 import com.smartdevicelink.proxy.rpc.AddSubMenu;
@@ -31,7 +32,6 @@ import com.smartdevicelink.proxy.rpc.AddSubMenuResponse;
 import com.smartdevicelink.proxy.rpc.Alert;
 import com.smartdevicelink.proxy.rpc.AlertManeuverResponse;
 import com.smartdevicelink.proxy.rpc.AlertResponse;
-import com.smartdevicelink.proxy.rpc.ButtonCapabilities;
 import com.smartdevicelink.proxy.rpc.ButtonPressResponse;
 import com.smartdevicelink.proxy.rpc.ChangeRegistrationResponse;
 import com.smartdevicelink.proxy.rpc.Choice;
@@ -46,24 +46,19 @@ import com.smartdevicelink.proxy.rpc.DeleteInteractionChoiceSetResponse;
 import com.smartdevicelink.proxy.rpc.DeleteSubMenu;
 import com.smartdevicelink.proxy.rpc.DeleteSubMenuResponse;
 import com.smartdevicelink.proxy.rpc.DiagnosticMessageResponse;
-import com.smartdevicelink.proxy.rpc.DialNumber;
 import com.smartdevicelink.proxy.rpc.DialNumberResponse;
 import com.smartdevicelink.proxy.rpc.DisplayCapabilities;
-import com.smartdevicelink.proxy.rpc.EndAudioPassThru;
 import com.smartdevicelink.proxy.rpc.EndAudioPassThruResponse;
 import com.smartdevicelink.proxy.rpc.GenericResponse;
 import com.smartdevicelink.proxy.rpc.GetDTCsResponse;
 import com.smartdevicelink.proxy.rpc.GetInteriorVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.GetSystemCapabilityResponse;
-import com.smartdevicelink.proxy.rpc.GetVehicleData;
 import com.smartdevicelink.proxy.rpc.GetVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.GetWayPointsResponse;
 import com.smartdevicelink.proxy.rpc.Image;
 import com.smartdevicelink.proxy.rpc.ListFiles;
 import com.smartdevicelink.proxy.rpc.ListFilesResponse;
 import com.smartdevicelink.proxy.rpc.MenuParams;
-import com.smartdevicelink.proxy.rpc.NavigationCapability;
-import com.smartdevicelink.proxy.rpc.OasisAddress;
 import com.smartdevicelink.proxy.rpc.OnAudioPassThru;
 import com.smartdevicelink.proxy.rpc.OnButtonEvent;
 import com.smartdevicelink.proxy.rpc.OnButtonPress;
@@ -82,7 +77,6 @@ import com.smartdevicelink.proxy.rpc.OnTBTClientState;
 import com.smartdevicelink.proxy.rpc.OnTouchEvent;
 import com.smartdevicelink.proxy.rpc.OnVehicleData;
 import com.smartdevicelink.proxy.rpc.OnWayPointChange;
-import com.smartdevicelink.proxy.rpc.PerformAudioPassThru;
 import com.smartdevicelink.proxy.rpc.PerformAudioPassThruResponse;
 import com.smartdevicelink.proxy.rpc.PerformInteraction;
 import com.smartdevicelink.proxy.rpc.PerformInteractionResponse;
@@ -92,7 +86,6 @@ import com.smartdevicelink.proxy.rpc.ReadDIDResponse;
 import com.smartdevicelink.proxy.rpc.ResetGlobalPropertiesResponse;
 import com.smartdevicelink.proxy.rpc.ScrollableMessageResponse;
 import com.smartdevicelink.proxy.rpc.SendHapticDataResponse;
-import com.smartdevicelink.proxy.rpc.SendLocation;
 import com.smartdevicelink.proxy.rpc.SendLocationResponse;
 import com.smartdevicelink.proxy.rpc.SetAppIconResponse;
 import com.smartdevicelink.proxy.rpc.SetDisplayLayout;
@@ -109,33 +102,27 @@ import com.smartdevicelink.proxy.rpc.SpeakResponse;
 import com.smartdevicelink.proxy.rpc.StreamRPCResponse;
 import com.smartdevicelink.proxy.rpc.SubscribeButton;
 import com.smartdevicelink.proxy.rpc.SubscribeButtonResponse;
-import com.smartdevicelink.proxy.rpc.SubscribeVehicleData;
 import com.smartdevicelink.proxy.rpc.SubscribeVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.SubscribeWayPointsResponse;
 import com.smartdevicelink.proxy.rpc.SystemRequestResponse;
 import com.smartdevicelink.proxy.rpc.Turn;
 import com.smartdevicelink.proxy.rpc.UnsubscribeButtonResponse;
-import com.smartdevicelink.proxy.rpc.UnsubscribeVehicleData;
 import com.smartdevicelink.proxy.rpc.UnsubscribeVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.UnsubscribeWayPointsResponse;
 import com.smartdevicelink.proxy.rpc.UpdateTurnListResponse;
-import com.smartdevicelink.proxy.rpc.enums.AudioStreamingState;
-import com.smartdevicelink.proxy.rpc.enums.AudioType;
-import com.smartdevicelink.proxy.rpc.enums.BitsPerSample;
 import com.smartdevicelink.proxy.rpc.enums.ButtonName;
 import com.smartdevicelink.proxy.rpc.enums.FileType;
 import com.smartdevicelink.proxy.rpc.enums.HMILevel;
 import com.smartdevicelink.proxy.rpc.enums.ImageType;
+import com.smartdevicelink.proxy.rpc.enums.InteractionMode;
 import com.smartdevicelink.proxy.rpc.enums.LayoutMode;
 import com.smartdevicelink.proxy.rpc.enums.LockScreenStatus;
-import com.smartdevicelink.proxy.rpc.enums.PRNDL;
 import com.smartdevicelink.proxy.rpc.enums.RequestType;
 import com.smartdevicelink.proxy.rpc.enums.Result;
-import com.smartdevicelink.proxy.rpc.enums.SamplingRate;
 import com.smartdevicelink.proxy.rpc.enums.SdlDisconnectedReason;
 import com.smartdevicelink.proxy.rpc.enums.SoftButtonType;
-import com.smartdevicelink.proxy.rpc.enums.SystemCapabilityType;
-import com.smartdevicelink.proxy.rpc.enums.SystemContext;
+import com.smartdevicelink.proxy.rpc.enums.TriggerSource;
+import com.smartdevicelink.proxy.rpc.listeners.OnMultipleRequestListener;
 import com.smartdevicelink.proxy.rpc.listeners.OnRPCResponseListener;
 import com.smartdevicelink.transport.SdlBroadcastReceiver;
 import com.smartdevicelink.transport.TransportConstants;
@@ -151,7 +138,9 @@ import java.io.InputStream;
 import java.lang.annotation.ElementType;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SdlService extends Service implements IProxyListenerALM {
 
@@ -160,16 +149,23 @@ public class SdlService extends Service implements IProxyListenerALM {
 
 //    public int autoIncCorrId = 0;
 
+    private boolean isFirstHMIFull = true, isChoiceAvailable = true, hasChoiceShown = false;
+
     private int nowPictureId = 0;
 
     private int menuItemId = 0;
 
+    private int lastPageCmdId=-1,nextPageCmdId=-1;
+
     private List<PutFileInfo> putFileInfos=new ArrayList();
+
+    private Map<Integer,String> cmdIdAndFileNameMap = new HashMap<>();
 
     private SdlProxyALM proxy=null;
 
     private LockScreenManager lockScreenManager = new LockScreenManager();
 
+    private int enterMenuTimes = 0;
 
 
     public SdlService() {
@@ -252,49 +248,52 @@ public class SdlService extends Service implements IProxyListenerALM {
 
 
     @Override
-    public void onOnHMIStatus(OnHMIStatus notification) {
-        //细分HMI状态
-//        AudioStreamingState streamingState = notification.getAudioStreamingState();
-//        SystemContext systemContext = notification.getSystemContext();
-        switch(notification.getHmiLevel()) {
-            case HMI_FULL:
-                setDisplayLayout();
-                setButton();
-//                sendTextShowRPC();
+    public void onOnHMIStatus(OnHMIStatus onHMIStatus) {
+        switch (onHMIStatus.getSystemContext()){
+            case SYSCTXT_MENU:
+                enterMenuTimes++;
+//                if (isChoiceAvailable){
+//                    sendChoiceSetRequest();
+//                    isChoiceAvailable = false;
+//                }
 
-                initFileFromDCIM();
-                if (nowPictureId == 0){
-                    putFile(0);
+                if (enterMenuTimes%2 == 1){
+                    sendChoiceSetRequest();
                 }
 
-                sendChoiceSetRequest();
-//                for (int i=0; i<4; i++){
-//                    putFile(i);
-//                }
-                //测试用，检查5个
-                checkIsFileUploaded(putFileInfos.subList(0,4));
+                break;
+                default:break;
+        }
 
-                //遍历所有图片的缩略图，发到menu
-//                for (int i=0; i<putFileInfos.size(); i++){
-//                    addCommand(putFileInfos.get(i).getFileName());
-//                }
+        switch(onHMIStatus.getHmiLevel()) {
+            case HMI_FULL:
+                if (isFirstHMIFull){
+                    setDisplayLayout();
+                    setButton();
+                    setButtonVR();
 
-                Log.d(TAG, "onOnHMIStatus:HMI_FULL");
+//                    addSubMenuRequest();
+//                sendTextShowRPC();
+
+                    initFileFromDCIM();
+                    checkIsFileUploaded(putFileInfos);
+
+//                    sendChoiceSetRequest();
+                }
+
+//                sendChoiceSetRequest();
+                isFirstHMIFull =false;
+
                 break;
             case HMI_LIMITED:
 
-                Log.d(TAG, "onOnHMIStatus:HMI_LIMITED");
                 break;
             case HMI_BACKGROUND:
-
-                Log.d(TAG, "onOnHMIStatus:HMI_BACKGROUND");
                 break;
             case HMI_NONE:
-
-                Log.d(TAG, "onOnHMIStatus:HMI_NONE");
                 break;
             default:
-                break;
+                return;
         }
     }
 
@@ -313,8 +312,7 @@ public class SdlService extends Service implements IProxyListenerALM {
         }
     }
 
-    //接收head-unit请求下载lockScreenIcon
-    @Override
+    //接收head-unit请求
     public void onOnSystemRequest(OnSystemRequest notification) {
         if(notification.getRequestType().equals(RequestType.LOCK_SCREEN_ICON_URL)){
             if(notification.getUrl() != null && lockScreenManager.getLockScreenIcon() == null){
@@ -459,6 +457,7 @@ public class SdlService extends Service implements IProxyListenerALM {
 
         putFileRequest.setFileData(readFileDate(id));
 //        putFileRequest.setFileData(contentsOfResource(R.drawable.ic_launcher_background));
+        putFileRequest.setCorrelationID(CorrelationIdGenerator.generateId());
 
         //持久化
         putFileRequest.setPersistentFile(true);
@@ -472,7 +471,6 @@ public class SdlService extends Service implements IProxyListenerALM {
                 if(response.getSuccess()){
                     PutFileInfo putFileInfo=putFileInfos.get(id);
                     putFileInfo.setReady(true);
-                    addCommand(putFileInfo.getFileName());
 
                     if (id == 0 ){
                         showGraphic(putFileInfos.get(0).getFileName());
@@ -495,6 +493,8 @@ public class SdlService extends Service implements IProxyListenerALM {
 
 
 
+
+
     //发送图片，先用PutFileRPC,再用ShowRPC。注：有的汽车终端不支持图片
     public void showGraphic(String fileName){
         Image image = new Image();
@@ -503,6 +503,7 @@ public class SdlService extends Service implements IProxyListenerALM {
 
         Show show = new Show();
         show.setGraphic(image);
+        show.setCorrelationID(CorrelationIdGenerator.generateId());
         show.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
@@ -517,25 +518,97 @@ public class SdlService extends Service implements IProxyListenerALM {
     }
 
 
+
+    public void sendDisorderedRequests(){
+        List<RPCRequest> rpcs= new ArrayList<>();
+
+        try {
+            proxy.sendRequests(rpcs, new OnMultipleRequestListener() {
+                @Override
+                public void onUpdate(int i) {
+
+                }
+
+                @Override
+                public void onFinished() {
+
+                }
+
+                @Override
+                public void onError(int i, Result result, String s) {
+
+                }
+
+                @Override
+                public void onResponse(int i, RPCResponse rpcResponse) {
+
+                }
+            });
+        } catch (SdlException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public void sendSequentialRequests(){
+        List<RPCRequest> rpcs = new ArrayList<>();
+
+        try {
+            proxy.sendSequentialRequests(rpcs, new OnMultipleRequestListener() {
+                @Override
+                public void onUpdate(int i) {
+
+                }
+
+                @Override
+                public void onFinished() {
+
+                }
+
+                @Override
+                public void onError(int i, Result result, String s) {
+
+                }
+
+                @Override
+                public void onResponse(int i, RPCResponse rpcResponse) {
+
+                }
+            });
+        } catch (SdlException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
+
+
     //Check if a File Has Already Been Uploaded
     public void checkIsFileUploaded(final List<PutFileInfo> putFileInfos){
         ListFiles listFiles = new ListFiles();
+        listFiles.setCorrelationID(CorrelationIdGenerator.generateId());
         listFiles.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
                 if(response.getSuccess()){
                     List<String> filenames = ((ListFilesResponse) response).getFilenames();
-                    for (PutFileInfo putFileInfo : putFileInfos) {
-                        if (filenames.contains(putFileInfo)) {
-                            int id = putFileInfo.getId();
-                            putFile(id);
+                    for (int i =0; i<putFileInfos.size(); i++) {
+                        PutFileInfo putFileInfo = putFileInfos.get(i);
+                        if (filenames.contains(putFileInfo.getFileName())) {
+                            putFileInfo.setReady(true);
                         } else {
-                            Log.i("SdlService", "App icon has not been uploaded.");
+                            putFile(i);
                         }
                     }
                 }else{
                     Log.i("SdlService", "Failed to request list of uploaded files.");
                 }
+                if (nowPictureId == 0){
+                    showGraphic(putFileInfos.get(0).getFileName());
+                }
+//                addSubMenuRequest();
+
             }
         });
 
@@ -546,6 +619,7 @@ public class SdlService extends Service implements IProxyListenerALM {
     //Check the Amount of File Storage
     public void checkLeftFileStorage(){
         ListFiles listFiles = new ListFiles();
+        listFiles.setCorrelationID(CorrelationIdGenerator.generateId());
         listFiles.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
@@ -565,9 +639,10 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     }
 
-    public void deleteFileWithFileName(){
+    public void deleteFileWithFileName(String fileName){
         DeleteFile deleteFileRequest = new DeleteFile();
-        deleteFileRequest.setSdlFileName("appIcon.jpeg");
+        deleteFileRequest.setSdlFileName(fileName);
+        deleteFileRequest.setCorrelationID(CorrelationIdGenerator.generateId());
         deleteFileRequest.setOnRPCResponseListener(new OnRPCResponseListener() {
 
             @Override
@@ -579,11 +654,8 @@ public class SdlService extends Service implements IProxyListenerALM {
                 }
             }
         });
-        try{
-            proxy.sendRPCRequest(deleteFileRequest);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+
+        sendRpcRequest(deleteFileRequest);
     }
 
 
@@ -598,6 +670,7 @@ public class SdlService extends Service implements IProxyListenerALM {
         lastPageBtn.setType(SoftButtonType.SBT_TEXT);
         lastPageBtn.setText("Last Page");
         lastPageBtn.setSoftButtonID(1);
+
 //        lastPageBtn.setIsHighlighted(true);
 
 
@@ -659,6 +732,36 @@ public class SdlService extends Service implements IProxyListenerALM {
         }
     }
 
+    public void setButtonVR(){
+        AddCommand addCommand = new AddCommand();
+        lastPageCmdId = CorrelationIdGenerator.generateId();
+        addCommand.setCmdID(lastPageCmdId);
+        addCommand.setVrCommands(Arrays.asList("Last Page"));
+        sendRpcRequest(addCommand);
+        AddCommand addCommand2 = new AddCommand();
+        nextPageCmdId = CorrelationIdGenerator.generateId();
+        addCommand2.setCmdID(nextPageCmdId);
+        addCommand2.setVrCommands(Arrays.asList("Next Page"));
+        sendRpcRequest(addCommand2);
+    }
+
+    @Override
+    public void onOnCommand(OnCommand onCommand) {
+        int cmdID = onCommand.getCmdID();
+        if (cmdID == lastPageCmdId){
+            showLastPage();
+        }else if (cmdID == nextPageCmdId){
+            showLastPage();
+        }else if (cmdIdAndFileNameMap.containsKey(cmdID)){
+            showGraphic(cmdIdAndFileNameMap.get(cmdID));
+
+            for (int deleteCmdId : cmdIdAndFileNameMap.keySet()){
+                deleteMenuItem(deleteCmdId);
+            }
+        }
+
+    }
+
     @Override
     public void onOnButtonPress(OnButtonPress notification) {
         switch(notification.getButtonName()){
@@ -668,29 +771,12 @@ public class SdlService extends Service implements IProxyListenerALM {
                 Log.d("SdlService", "Button event received for button " + ID);
                 switch (ID) {
                     case 1:
-                        if (nowPictureId == 0) {
-                            // 显示到顶
-
-                        } else {
-                            nowPictureId--;
-                            PutFileInfo putFileInfo = putFileInfos.get(nowPictureId);
-                            if (putFileInfo.isReady) {
-                                showGraphic(putFileInfo.getFileName());
-                            }
-                        }
+                       showLastPage();
                         break;
                     case 2:
-                        if (nowPictureId == putFileInfos.size() - 1) {
-                            // 显示到底
-                        } else {
-                            nowPictureId++;
-                            PutFileInfo putFileInfo = putFileInfos.get(nowPictureId);
-                            if (putFileInfo.isReady) {
-                                showGraphic(putFileInfo.getFileName());
-                            }
-                        }
+                        showNextPage();
                         break;
-                        default:break;
+                    default:break;
                 }
                 break;
             case OK:
@@ -708,7 +794,34 @@ public class SdlService extends Service implements IProxyListenerALM {
         }
     }
 
-    public void addCommand(String fileName){
+    public void showLastPage(){
+
+        if (nowPictureId == 0) {
+            // 显示到顶
+
+        } else {
+            nowPictureId--;
+            PutFileInfo putFileInfo = putFileInfos.get(nowPictureId);
+            if (putFileInfo.getReady()) {
+                showGraphic(putFileInfo.getFileName());
+            }
+        }
+    }
+
+
+    public void showNextPage() {
+        if (nowPictureId == putFileInfos.size() - 1) {
+            // 显示到底
+        } else {
+            nowPictureId++;
+            PutFileInfo putFileInfo = putFileInfos.get(nowPictureId);
+            if (putFileInfo.getReady()) {
+                showGraphic(putFileInfo.getFileName());
+            }
+        }
+    }
+
+    public void setMenuItem(String fileName){
 
         MenuParams menuParams = new MenuParams();
         menuParams.setParentID(0);
@@ -720,18 +833,24 @@ public class SdlService extends Service implements IProxyListenerALM {
         image.setValue(fileName);
 
         AddCommand addCommand = new AddCommand();
-        addCommand.setCmdID(CorrelationIdGenerator.generateId());
+        int cmdId = CorrelationIdGenerator.generateId();
+        addCommand.setCmdID(cmdId);
         addCommand.setMenuParams(menuParams);
         addCommand.setCmdIcon(image);
+        addCommand.setVrCommands(Arrays.asList(fileName));
 
+        if (!cmdIdAndFileNameMap.containsValue(fileName)){
+            cmdIdAndFileNameMap.put(cmdId,fileName);
+
+        }
         sendRpcRequest(addCommand);
     }
 
-    public void sendDeleteCommandRequest(){
-        int cmdID_to_delete = 1;
+
+    public void deleteMenuItem(int cmdId){
 
         DeleteCommand deleteCommand = new DeleteCommand();
-        deleteCommand.setCmdID(cmdID_to_delete);
+        deleteCommand.setCmdID(cmdId);
 
         try {
             proxy.sendRPCRequest(deleteCommand);
@@ -742,22 +861,28 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     //先收到SubMenu的Resqonse才能再addItem
     public void addSubMenuRequest(){
-        int unique_id = CorrelationIdGenerator.generateId();
+//        int unique_id = CorrelationIdGenerator.generateId();
         AddSubMenu addSubMenu = new AddSubMenu();
         addSubMenu.setPosition(0);
-        addSubMenu.setMenuID(unique_id);
-        addSubMenu.setMenuName("SubMenu");
+        addSubMenu.setMenuID(1);
+        addSubMenu.setMenuName("list");
         addSubMenu.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
                 if(((AddSubMenuResponse) response).getSuccess()){
                     // The submenu was created successfully, start adding the submenu items
                     // Use unique_id
+
+//                    for (int i=0 ;i<putFileInfos.size(); i++){
+//                        setMenuItems(putFileInfos.get(i).getFileName());
+//                    }
                 }else{
                     Log.i("SdlService", "AddSubMenu request rejected.");
                 }
             }
         });
+
+        sendRpcRequest(addSubMenu);
     }
 
     public void deleteSubMenuRequest(int submenuID_to_delete){
@@ -770,72 +895,78 @@ public class SdlService extends Service implements IProxyListenerALM {
     public void sendChoiceSetRequest(){
         CreateInteractionChoiceSet choiceSet = new CreateInteractionChoiceSet();
 
-        Choice choice = new Choice();
-        int uniqueChoiceID=CorrelationIdGenerator.generateId();
-        choice.setChoiceID(uniqueChoiceID);
-        choice.setMenuName("ChoiceA");
-        choice.setVrCommands(Arrays.asList("ChoiceA"));
+        Choice choice0 = new Choice();
+//        int ChoiceID0=CorrelationIdGenerator.generateId();
+        choice0.setChoiceID(0);
+        choice0.setMenuName("list");
+        choice0.setVrCommands(Arrays.asList("list"));
+
+//        Choice choice1 = new Choice();
+//        int uniqueChoiceID1=CorrelationIdGenerator.generateId();
+//        choice1.setChoiceID(uniqueChoiceID1);
+//        choice1.setMenuName("ChoiceB");
+//        choice1.setVrCommands(Arrays.asList("B"));
 
         List<Choice> choiceList = new ArrayList<>();
-        choiceList.add(choice);
-
+        choiceList.add(choice0);
+//        choiceList.add(choice1);
         choiceSet.setChoiceSet(choiceList);
-        int uniqueIntChoiceSetID = CorrelationIdGenerator.generateId();
+        final int uniqueIntChoiceSetID = CorrelationIdGenerator.generateId();
         choiceSet.setInteractionChoiceSetID(uniqueIntChoiceSetID);
         choiceSet.setOnRPCResponseListener(new OnRPCResponseListener() {
             @Override
             public void onResponse(int correlationId, RPCResponse response) {
-                if(((CreateInteractionChoiceSetResponse) response).getSuccess()){
+                if(response.getSuccess()){
                     // The request was successful, now send the SDLPerformInteraction RPC
-                    sendInteractionRequest();
+//                    int a=correlationId;
+//                    int b=uniqueIntChoiceSetID;
+                    sendInteractionRequest(uniqueIntChoiceSetID);
                 }else{
                     // The request was unsuccessful
                 }
             }
         });
-        try {
-            proxy.sendRPCRequest(choiceSet);
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
+
+        hasChoiceShown = true;
+        sendRpcRequest(choiceSet);
     }
 
 
     //在menu item发送后，再发送interaction RPC使item显示出来
-    public void sendInteractionRequest(){
+    public void sendInteractionRequest(int uniqueIntChoiceSetID){
         List<Integer> interactionChoiceSetIDList = new ArrayList<>();
-        int uniqueIntChoiceSetID=CorrelationIdGenerator.generateId();
+//        int uniqueIntChoiceSetID=CorrelationIdGenerator.generateId();
         interactionChoiceSetIDList.add(uniqueIntChoiceSetID);
 
         PerformInteraction performInteraction = new PerformInteraction();
-        performInteraction.setInitialText("Initial text.");
+        performInteraction.setInitialText("Initial");
         performInteraction.setInteractionChoiceSetIDList(interactionChoiceSetIDList);
 
         performInteraction.setInteractionLayout(LayoutMode.LIST_ONLY);
+        performInteraction.setInteractionMode(InteractionMode.BOTH);
 
-        //语音提示
-        performInteraction.setInitialPrompt(
-                TTSChunkFactory.createSimpleTTSChunks("Hello, welcome."));
-        //
-        performInteraction.setTimeout(3000);
-        performInteraction.setOnRPCResponseListener(new OnRPCResponseListener() {
-            @Override
-            public void onResponse(int correlationId, RPCResponse response) {
-                PerformInteractionResponse piResponse = (PerformInteractionResponse) response;
-                if(piResponse.getSuccess()){
-                    // Successful request
-                    if(piResponse.getResultCode().equals(Result.TIMED_OUT)){
-                        // Interaction timed out without user input
-                    }else if(piResponse.getResultCode().equals(Result.SUCCESS)){
-                        Integer userChoice = piResponse.getChoiceID();
-                    }
-                }else{
-                    // Unsuccessful request
-                }
-            }
-        });
+//        performInteraction.setInitialPrompt(
+//                TTSChunkFactory.createSimpleTTSChunks("Hello"));
+//        performInteraction.setTimeout(3000);
 
         sendRpcRequest(performInteraction);
+    }
+
+    @Override
+    public void onPerformInteractionResponse(PerformInteractionResponse piResponse) {
+        if(piResponse.getSuccess()){
+            if(piResponse.getResultCode().equals(Result.TIMED_OUT)){
+            }else if(piResponse.getResultCode().equals(Result.SUCCESS)){
+                Integer userChoice = piResponse.getChoiceID();
+//                setSubMenuItems(putFileInfos.get(0).getFileName());
+                if (userChoice.equals(0)){
+                    for (int i=0 ;i<putFileInfos.size(); i++){
+                        setMenuItem(putFileInfos.get(i).getFileName());
+                    }
+                }
+            }
+        }else{
+        }
     }
 
     //删除交互选择的item
@@ -915,11 +1046,6 @@ public class SdlService extends Service implements IProxyListenerALM {
     @Override
     public void onProxyClosed(String s, Exception e, SdlDisconnectedReason sdlDisconnectedReason) {
         stopSelf();
-        if(sdlDisconnectedReason.equals(SdlDisconnectedReason.LANGUAGE_CHANGE)){
-            Intent intent = new Intent(TransportConstants.START_ROUTER_SERVICE_ACTION);
-            intent.putExtra(SdlReceiver.RECONNECT_LANG_CHANGE, true);
-            sendBroadcast(intent);
-        }
     }
 
     @Override
@@ -949,11 +1075,6 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     @Override
     public void onGenericResponse(GenericResponse genericResponse) {
-
-    }
-
-    @Override
-    public void onOnCommand(OnCommand onCommand) {
 
     }
 
@@ -992,10 +1113,6 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     }
 
-    @Override
-    public void onPerformInteractionResponse(PerformInteractionResponse performInteractionResponse) {
-
-    }
 
     @Override
     public void onResetGlobalPropertiesResponse(ResetGlobalPropertiesResponse resetGlobalPropertiesResponse) {
@@ -1053,13 +1170,25 @@ public class SdlService extends Service implements IProxyListenerALM {
 
     }
 
+    @Override
+    public void onOnVehicleData(OnVehicleData onVehicleData) {
 
+    }
+
+    @Override
+    public void onPerformAudioPassThruResponse(PerformAudioPassThruResponse performAudioPassThruResponse) {
+
+    }
 
     @Override
     public void onEndAudioPassThruResponse(EndAudioPassThruResponse endAudioPassThruResponse) {
 
     }
 
+    @Override
+    public void onOnAudioPassThru(OnAudioPassThru onAudioPassThru) {
+
+    }
 
     @Override
     public void onPutFileResponse(PutFileResponse putFileResponse) {
@@ -1232,238 +1361,4 @@ public class SdlService extends Service implements IProxyListenerALM {
     public void onSendHapticDataResponse(SendHapticDataResponse sendHapticDataResponse) {
 
     }
-
-
-    //
-    public void getVehicleData(){
-        GetVehicleData vdRequest = new GetVehicleData();
-        vdRequest.setPrndl(true);
-        vdRequest.setOnRPCResponseListener(new OnRPCResponseListener() {
-            @Override
-            public void onResponse(int correlationId, RPCResponse response) {
-                if(response.getSuccess()){
-                    PRNDL prndl = ((GetVehicleDataResponse) response).getPrndl();
-                    Log.i("SdlService", "PRNDL status: " + prndl.toString());
-                }else{
-                    Log.i("SdlService", "GetVehicleData was rejected.");
-                }
-            }
-        });
-       sendRpcRequest(vdRequest);
-    }
-
-    //订阅车辆信息，大概每秒返回一次
-    public void subscribeVehicleData() {
-        SubscribeVehicleData subscribeRequest = new SubscribeVehicleData();
-        subscribeRequest.setPrndl(true);
-        subscribeRequest.setOnRPCResponseListener(new OnRPCResponseListener() {
-            @Override
-            public void onResponse(int correlationId, RPCResponse response) {
-                if (response.getSuccess()) {
-                    Log.i("SdlService", "Successfully subscribed to vehicle data.");
-                } else {
-                    Log.i("SdlService", "Request to subscribe to vehicle data was rejected.");
-                }
-            }
-        });
-        sendRpcRequest(subscribeRequest);
-    }
-
-    @Override
-    public void onOnVehicleData(OnVehicleData notification) {
-        PRNDL prndl = notification.getPrndl();
-        Log.i("SdlService", "PRNDL status was updated to: "+prndl.toString());
-    }
-
-    //取消订阅车辆信息
-    public void unsubscribeVehicleData(){
-        UnsubscribeVehicleData unsubscribeRequest = new UnsubscribeVehicleData();
-        unsubscribeRequest.setPrndl(true); // unsubscribe to PRNDL data
-        unsubscribeRequest.setOnRPCResponseListener(new OnRPCResponseListener() {
-            @Override
-            public void onResponse(int correlationId, RPCResponse response) {
-                if(response.getSuccess()){
-                    Log.i("SdlService", "Successfully unsubscribed to vehicle data.");
-                }else{
-                    Log.i("SdlService", "Request to unsubscribe to vehicle data was rejected.");
-                }
-            }
-        });
-
-        sendRpcRequest(unsubscribeRequest);
-    }
-
-
-    //检查导航仪是否可用
-    public void checkIsNavigationAvailable(){
-        try {
-            if(proxy.getHmiCapabilities().isNavigationAvailable()){
-                // SendLocation supported
-            }else{
-                // SendLocation is not supported
-            }
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
-    }
-
-    //标记目的地
-    public void  sendLocation(){
-        SendLocation sendLocation = new SendLocation();
-        sendLocation.setLatitudeDegrees(42.877737);
-        sendLocation.setLongitudeDegrees(-97.380967);
-        sendLocation.setLocationName("The Center");
-        sendLocation.setLocationDescription("Center of the United States");
-
-// Create Address
-        OasisAddress address = new OasisAddress();
-        address.setSubThoroughfare("900");
-        address.setThoroughfare("Whiting Dr");
-        address.setLocality("Yankton");
-        address.setAdministrativeArea("SD");
-        address.setPostalCode("57078");
-        address.setCountryCode("US-SD");
-        address.setCountryName("United States");
-
-        sendLocation.setAddress(address);
-
-// Monitor response
-        sendLocation.setOnRPCResponseListener(new OnRPCResponseListener() {
-            @Override
-            public void onResponse(int correlationId, RPCResponse response) {
-                Result result = response.getResultCode();
-                if(result.equals(Result.SUCCESS)){
-                    // SendLocation was successfully sent.
-                }else if(result.equals(Result.INVALID_DATA)){
-                    // The request you sent contains invalid data and was rejected.
-                }else if(result.equals(Result.DISALLOWED)){
-                    // Your app does not have permission to use SendLocation.
-                }
-            }
-        });
-
-        sendRpcRequest(sendLocation);
-    }
-
-
-
-    //检查打电话是否可用
-    public void checkIsPhoneCallAvailable() {
-        try {
-            if (proxy.getHmiCapabilities().isPhoneCallAvailable()) {
-                // DialNumber supported
-            } else {
-                // DialNumber is not supported
-            }
-        } catch (SdlException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    public void dialNumber(){
-        DialNumber dialNumber = new DialNumber();
-        dialNumber.setNumber("1238675309");
-        dialNumber.setOnRPCResponseListener(new OnRPCResponseListener() {
-            @Override
-            public void onResponse(int correlationId, RPCResponse response) {
-                Result result = response.getResultCode();
-                if(result.equals(Result.SUCCESS)){
-                    // `DialNumber` was successfully sent, and a phone call was initiated by the user.
-                }else if(result.equals(Result.REJECTED)){
-                    // `DialNumber` was sent, and a phone call was cancelled by the user. Also, this could mean that there is no phone connected via Bluetooth.
-                }else if(result.equals(Result.DISALLOWED)){
-                    // Your app does not have permission to use DialNumber.
-                }
-            }
-        });
-
-        sendRpcRequest(dialNumber);
-    }
-
-
-    //
-    public void performAudioPassThru(){
-        PerformAudioPassThru performAPT = new PerformAudioPassThru();
-        performAPT.setAudioPassThruDisplayText1("Ask me \"What's the weather?\"");
-        performAPT.setAudioPassThruDisplayText2("or \"What's 1 + 2?\"");
-
-        performAPT.setInitialPrompt(TTSChunkFactory
-                .createSimpleTTSChunks("Ask me What's the weather? or What's 1 plus 2?"));
-        performAPT.setSamplingRate(SamplingRate._22KHZ);
-        performAPT.setMaxDuration(7000);
-        performAPT.setBitsPerSample(BitsPerSample._16_BIT);
-        performAPT.setAudioType(AudioType.PCM);
-        performAPT.setMuteAudio(false);
-
-        sendRpcRequest(performAPT);
-    }
-
-    public void endAudioPassThru(){
-        EndAudioPassThru endAPT = new EndAudioPassThru();
-        sendRpcRequest(endAPT);
-    }
-
-    @Override
-    public void onOnAudioPassThru(OnAudioPassThru notification) {
-
-        byte[] dataRcvd;
-        dataRcvd = notification.getAPTData();
-
-        // Do something with audio data
-    }
-
-    @Override
-    public void onPerformAudioPassThruResponse(PerformAudioPassThruResponse response) {
-        Result result = response.getResultCode();
-        if(result.equals(Result.SUCCESS)){
-            // We can use the data
-        }else{
-            // Cancel any usage of the data
-            Log.e("SdlService", "Audio pass thru attempt failed.");
-        }
-    }
-
-
-    public void getNavigationCapabilities(){
-        // First you can check to see if the capability is supported on the module
-        if (proxy.isCapabilitySupported(SystemCapabilityType.NAVIGATION)){
-            // Since the module does support this capability we can query it for more information
-            proxy.getCapability(SystemCapabilityType.NAVIGATION, new OnSystemCapabilityListener(){
-
-                @Override
-                public void onCapabilityRetrieved(Object capability){
-                    NavigationCapability navCapability = (NavigationCapability) capability;
-                    // Now it is possible to get details on how this capability
-                    // is supported using the navCapability object
-                }
-
-                @Override
-                public void onError(String info){
-                    Log.i(TAG, "Capability could not be retrieved: "+ info);
-                }
-            });
-        }
-    }
-
-    public void getButtonCapabilities() {
-
-        proxy.getCapability(SystemCapabilityType.BUTTON, new OnSystemCapabilityListener(){
-
-            @Override
-            public void onCapabilityRetrieved(Object capability){
-                List<ButtonCapabilities> buttonCapabilityList = SystemCapabilityManager.convertToList(capability, ButtonCapabilities.class);
-
-            }
-
-            @Override
-            public void onError(String info){
-                Log.i(TAG, "Capability could not be retrieved: "+ info);
-            }
-        });
-    }
-
-
-
-
 }

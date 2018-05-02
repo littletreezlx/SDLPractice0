@@ -8,7 +8,9 @@ public class PutFileInfo {
 
     String fileName;
 
-    Boolean isReady;
+    Boolean isReady=false;
+
+
 
     public int getId() {
         return id;

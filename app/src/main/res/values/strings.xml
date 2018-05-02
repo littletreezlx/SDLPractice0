@@ -1,3 +1,8 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">SDLPractice</string>
+
+    <string name="sdl_router_service_version_name">sdl_router_version</string>
+
+
+
 </resources>
