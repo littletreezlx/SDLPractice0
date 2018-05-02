@@ -120,6 +120,7 @@ import com.smartdevicelink.proxy.rpc.enums.RequestType;
 import com.smartdevicelink.proxy.rpc.enums.Result;
 import com.smartdevicelink.proxy.rpc.enums.SdlDisconnectedReason;
 import com.smartdevicelink.proxy.rpc.enums.SoftButtonType;
+import com.smartdevicelink.proxy.rpc.listeners.OnMultipleRequestListener;
 import com.smartdevicelink.proxy.rpc.listeners.OnRPCResponseListener;
 import com.smartdevicelink.transport.SdlBroadcastReceiver;
 import com.smartdevicelink.transport.TransportConstants;
@@ -492,6 +493,72 @@ public class SdlService extends Service implements IProxyListenerALM {
         });
         sendRpcRequest(show);
     }
+
+
+
+    public void sendDisorderedRequests(){
+        List<RPCRequest> rpcs= new ArrayList<>();
+
+        try {
+            proxy.sendRequests(rpcs, new OnMultipleRequestListener() {
+                @Override
+                public void onUpdate(int i) {
+
+                }
+
+                @Override
+                public void onFinished() {
+
+                }
+
+                @Override
+                public void onError(int i, Result result, String s) {
+
+                }
+
+                @Override
+                public void onResponse(int i, RPCResponse rpcResponse) {
+
+                }
+            });
+        } catch (SdlException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public void sendSequentialRequests(){
+        List<RPCRequest> rpcs = new ArrayList<>();
+
+        try {
+            proxy.sendSequentialRequests(rpcs, new OnMultipleRequestListener() {
+                @Override
+                public void onUpdate(int i) {
+
+                }
+
+                @Override
+                public void onFinished() {
+
+                }
+
+                @Override
+                public void onError(int i, Result result, String s) {
+
+                }
+
+                @Override
+                public void onResponse(int i, RPCResponse rpcResponse) {
+
+                }
+            });
+        } catch (SdlException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
 
 
     //Check if a File Has Already Been Uploaded
